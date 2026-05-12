@@ -1,16 +1,25 @@
 import React from 'react'
 import { useTheme } from '../src/theme'
 import { Bell, LogOut } from 'lucide-react'
+import { useRouter } from 'next/router'
+import { clearDemoSession, type UserRole } from '../src/auth'
 
-export default function Topbar({ role }: { role: string }){
+export default function Topbar({ role }: { role: UserRole }){
   const { dark, toggle } = useTheme()
-  const userInitial = 'J' // John
+  const router = useRouter()
+  const userInitial = 'J'
+
+  const handleLogout = () => {
+    clearDemoSession()
+    router.push('/login')
+  }
+
   return (
     <header className="flex items-center justify-between p-4 md:p-6 bg-white rounded-xl shadow-sm border border-gray-100">
       <div className="text-sm font-semibold text-green-600 uppercase tracking-wide">{role} Dashboard</div>
       <div className="flex items-center gap-4">
         <button onClick={toggle} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-          {dark? '☀️' : '🌙'}
+          {dark ? 'Light' : 'Dark'}
         </button>
         <div className="relative">
           <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative">
@@ -23,7 +32,7 @@ export default function Topbar({ role }: { role: string }){
             {userInitial}
           </div>
           <div className="text-sm text-gray-900 font-medium">John {role.charAt(0).toUpperCase() + role.slice(1)}</div>
-          <button className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={handleLogout} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Logout">
             <LogOut size={16} />
           </button>
         </div>

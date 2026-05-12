@@ -4,11 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Eye, EyeOff, Home } from 'lucide-react';
-
-type UserRole = 'student' | 'parent' | 'teacher' | 'admin' | null;
+import { saveDemoSession, type UserRole } from '../src/auth';
 
 export default function Login() {
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [admissionNo, setAdmissionNo] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -23,16 +22,8 @@ export default function Login() {
       return;
     }
 
-    // For demo: accept any credentials and redirect to selected role dashboard
-    // Persist demo session (optional)
-    try {
-      sessionStorage.setItem('demo_role', role);
-      sessionStorage.setItem('demo_user', admissionNo || 'demo-user');
-    } catch (err) {
-      // ignore storage errors
-    }
+    saveDemoSession(role, admissionNo || 'demo-user');
 
-    // Map role to route
     const routeMap: Record<string, string> = {
       student: '/student/dashboard',
       parent: '/parent/dashboard',
@@ -45,20 +36,18 @@ export default function Login() {
   };
 
   const roleButtons = [
-    { id: 'student', label: 'Student', icon: '👤' },
-    { id: 'parent', label: 'Parent', icon: '👨‍👩‍👧‍👦' },
-    { id: 'teacher', label: 'Teacher', icon: '📚' },
-    { id: 'admin', label: 'Admin', icon: '⚙️' },
+    { id: 'student', label: 'Student', icon: 'S' },
+    { id: 'parent', label: 'Parent', icon: 'P' },
+    { id: 'teacher', label: 'Teacher', icon: 'T' },
+    { id: 'admin', label: 'Admin', icon: 'A' },
   ];
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Green Gradient with School Info */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center"
         style={{ backgroundImage: "url('/login.jpg')" }}
       >
-        {/* Translucent green overlay and subtle grid pattern */}
         <div className="absolute inset-0" aria-hidden>
           <div className="absolute inset-0 bg-green-700/55 mix-blend-multiply" />
           <div
@@ -72,7 +61,6 @@ export default function Login() {
           />
         </div>
 
-        {/* Content */}
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
@@ -90,65 +78,20 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Menu Items */}
-        <div className="relative z-10 space-y-4 mb-12">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg">📊</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">Track Performance</h3>
-              <p className="text-sm text-white/80">Monitor grades and progress</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg">💰</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">Fees Management</h3>
-              <p className="text-sm text-white/80">View and pay fees online</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg">📅</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">Attendance Records</h3>
-              <p className="text-sm text-white/80">Check daily attendance</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg">💬</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">Messages & Notices</h3>
-              <p className="text-sm text-white/80">Stay informed with updates</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Wavy Bottom Border */}
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-white/10 clip-path-wave"></div>
       </div>
 
-      {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center p-6 lg:p-12 text-gray-900">
         <div className="w-full max-w-md">
-          {/* Demo Mode Badge */}
           <div className="mb-8">
             <span className="text-xs font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full">Demo Mode</span>
           </div>
 
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Login to Portal</h1>
             <p className="text-gray-600">Enter your credentials to access your account</p>
           </div>
 
-          {/* Role Selection */}
           <div className="mb-8">
             <label className="block text-sm font-semibold text-gray-900 mb-4">Select Role</label>
             <div className="grid grid-cols-2 gap-2.5">
@@ -170,13 +113,11 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Admission Number */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Admission No.</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">ID</span>
                 <input
                   type="text"
                   value={admissionNo}
@@ -187,16 +128,15 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Password</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">PW</span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="********"
                   className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-colors text-gray-900 placeholder-gray-400"
                 />
                 <button
@@ -209,7 +149,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -225,7 +164,6 @@ export default function Login() {
               </Link>
             </div>
 
-            {/* Login Button */}
             <button
               type="submit"
               className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all mt-6"
@@ -233,16 +171,6 @@ export default function Login() {
               Login
             </button>
           </form>
-
-          {/* Help Link */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600">
-              Need help?{' '}
-              <a href="/contact" className="text-green-600 hover:text-green-700 font-medium">
-                Contact admin
-              </a>
-            </p>
-          </div>
         </div>
       </div>
 

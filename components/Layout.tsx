@@ -1,8 +1,24 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useRouter } from 'next/router'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import { getDemoRole, type UserRole } from '../src/auth'
 
-export default function Layout({ children, role }: { children: React.ReactNode, role: string }){
+export default function Layout({ children, role }: { children: React.ReactNode, role: UserRole }){
+  const router = useRouter()
+
+  useEffect(() => {
+    const sessionRole = getDemoRole()
+    if (!sessionRole) {
+      router.replace('/login')
+      return
+    }
+
+    if (sessionRole !== role) {
+      router.replace(`/${sessionRole}/dashboard`)
+    }
+  }, [role, router])
+
   return (
     <div className="min-h-screen flex bg-gray-50 flex-col md:flex-row">
       <Sidebar role={role} />
