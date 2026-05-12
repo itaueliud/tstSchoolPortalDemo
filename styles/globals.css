@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #071B2A;
+  --neon: #5BE12C;
+  --deep: #0C3B66;
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(91,225,44,0.04), transparent 5%), var(--bg);
+  color: rgba(255,255,255,0.92);
+}
+
+/* glass card */
+.card {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 30px rgba(7,27,42,0.6);
+  border-radius: 12px;
+}
+
+a { color: inherit; }
+
+/* utilities */
+.neon-glow {
+  box-shadow: 0 4px 18px rgba(91,225,44,0.08), 0 0 8px rgba(11,90,255,0.06);
+}
+
+/* responsive tweaks */
+@media (max-width: 640px) {
+  .hide-sm { display: none; }
+}
