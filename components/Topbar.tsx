@@ -4,6 +4,7 @@ import { Bell, LogOut } from 'lucide-react'
 
 export default function Topbar({ role }: { role: string }){
   const { dark, toggle } = useTheme()
+  const userInitial = 'J' // John
   return (
     <header className="flex items-center justify-between p-4 md:p-6 bg-white rounded-xl shadow-sm border border-gray-100">
       <div className="text-sm font-semibold text-green-600 uppercase tracking-wide">{role} Dashboard</div>
@@ -18,7 +19,9 @@ export default function Topbar({ role }: { role: string }){
           </button>
         </div>
         <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-          <img src="/avatar.png" alt="avatar" className="w-8 h-8 rounded-full" />
+          <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold text-sm">
+            {userInitial}
+          </div>
           <div className="text-sm text-gray-900 font-medium">John {role.charAt(0).toUpperCase() + role.slice(1)}</div>
           <button className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <LogOut size={16} />

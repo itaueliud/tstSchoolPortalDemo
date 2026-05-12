@@ -23,15 +23,13 @@ export default function Sidebar({ role }: { role: string }) {
 
   return (
     <>
-      {/* Mobile Menu Button - Only show on mobile and when sidebar is closed */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg"
-        >
-          {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      )}
+      {/* Mobile Menu Button - Always show on mobile */}
+      <button
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg"
+      >
+        {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
