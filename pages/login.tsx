@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Eye, EyeOff, Home } from 'lucide-react';
 
 type UserRole = 'student' | 'parent' | 'teacher' | 'admin' | null;
@@ -13,14 +14,34 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const router = useRouter();
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role || !admissionNo || !password) {
-      alert('Please fill in all fields');
+    if (!role) {
+      alert('Please select a role to continue');
       return;
     }
-    // Handle login logic here
-    console.log({ role, admissionNo, password, rememberMe });
+
+    // For demo: accept any credentials and redirect to selected role dashboard
+    // Persist demo session (optional)
+    try {
+      sessionStorage.setItem('demo_role', role);
+      sessionStorage.setItem('demo_user', admissionNo || 'demo-user');
+    } catch (err) {
+      // ignore storage errors
+    }
+
+    // Map role to route
+    const routeMap: Record<string, string> = {
+      student: '/student/dashboard',
+      parent: '/parent/dashboard',
+      teacher: '/teacher/dashboard',
+      admin: '/admin/dashboard',
+    };
+
+    const target = routeMap[role] || '/';
+    router.push(target);
   };
 
   const roleButtons = [
