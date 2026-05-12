@@ -11,9 +11,11 @@ export default function ParentDashboard(){
         <StatCard title="Latest Grade" value={'A-'} />
       </div>
 
-      <div className="card p-4 md:col-span-1">
-        <h3 className="text-sm text-white/70">Messages</h3>
-        <div className="mt-4 text-white/70">No unread messages</div>
+      <div className="card p-6 md:col-span-1">
+        <h3 className="text-lg font-semibold text-gray-900">Messages</h3>
+        <div className="mt-4 py-8 text-center text-gray-500">
+          <p className="text-sm">No unread messages</p>
+        </div>
       </div>
     </Layout>
   )

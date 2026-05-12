@@ -4,7 +4,7 @@ import Topbar from './Topbar'
 
 export default function Layout({ children, role }: { children: React.ReactNode, role: string }){
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gray-50">
       <Sidebar role={role} />
       <main className="flex-1 p-4 md:p-8">
         <Topbar role={role} />

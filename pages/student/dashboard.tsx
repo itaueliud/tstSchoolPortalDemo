@@ -11,11 +11,17 @@ export default function StudentDashboard(){
         <StatCard title="Assignments" value={3} />
       </div>
 
-      <div className="card p-4 md:col-span-1">
-        <h3 className="text-sm text-white/70">Recent Announcements</h3>
-        <ul className="mt-4 space-y-2 text-white/70">
-          <li>PTA Meeting this Saturday</li>
-          <li>Exams start next month</li>
+      <div className="card p-6 md:col-span-1">
+        <h3 className="text-lg font-semibold text-gray-900">Recent Announcements</h3>
+        <ul className="mt-4 space-y-3 text-gray-600">
+          <li className="flex items-start gap-2">
+            <span className="text-green-600 mt-1">•</span>
+            <span>PTA Meeting this Saturday</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-600 mt-1">•</span>
+            <span>Exams start next month</span>
+          </li>
         </ul>
       </div>
     </Layout>

@@ -7,7 +7,15 @@ const Chart = dynamic(() => import('react-chartjs-2').then(m=>m.Line), { ssr: fa
 export default function AdminDashboard(){
   const data = {
     labels: ['Jan','Feb','Mar','Apr','May','Jun'],
-    datasets: [{ label: 'Attendance', data: [92,95,90,93,94,92], borderColor: '#5BE12C', backgroundColor: 'rgba(91,225,44,0.08)' }]
+    datasets: [{ 
+      label: 'Attendance', 
+      data: [92,95,90,93,94,92], 
+      borderColor: '#16a34a', 
+      backgroundColor: 'rgba(34, 197, 94, 0.08)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.4
+    }]
   }
 
   return (
@@ -19,11 +27,10 @@ export default function AdminDashboard(){
         <StatCard title="Revenue" value={'KES 1,590,800'} />
       </div>
 
-      <div className="card p-4 md:col-span-1">
-        <h3 className="text-sm text-white/70">School Analytics</h3>
-        <div className="mt-4"><Chart data={data} /></div>
+      <div className="card p-6 md:col-span-1">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">School Analytics</h3>
+        <div className="mt-4" style={{ height: '200px' }}><Chart data={data} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} /></div>
       </div>
-
     </Layout>
   )
 }

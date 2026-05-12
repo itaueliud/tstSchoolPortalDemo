@@ -11,11 +11,15 @@ export default function TeacherDashboard(){
         <StatCard title="Pending Grades" value={14} />
       </div>
 
-      <div className="card p-4 md:col-span-1">
-        <h3 className="text-sm text-white/70">Quick Actions</h3>
-        <div className="mt-4 space-y-2">
-          <button className="w-full p-2 rounded bg-neon text-navy">Mark Attendance</button>
-          <button className="w-full p-2 rounded bg-white/6">Upload Assignment</button>
+      <div className="card p-6 md:col-span-1">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="space-y-3">
+          <button className="w-full p-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium hover:shadow-md transition-shadow">
+            📋 Mark Attendance
+          </button>
+          <button className="w-full p-3 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+            📤 Upload Assignment
+          </button>
         </div>
       </div>
     </Layout>
