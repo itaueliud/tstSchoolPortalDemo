@@ -135,7 +135,7 @@ export default function Login() {
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center p-6 lg:p-12">
+      <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center p-6 lg:p-12 text-gray-900">
         <div className="w-full max-w-md">
           {/* Demo Mode Badge */}
           <div className="mb-8">
@@ -181,7 +181,7 @@ export default function Login() {
                   value={admissionNo}
                   onChange={(e) => setAdmissionNo(e.target.value)}
                   placeholder="GVA-2024-001"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-colors text-gray-900 placeholder-gray-400"
                 />
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-colors"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-colors text-gray-900 placeholder-gray-400"
                 />
                 <button
                   type="button"
