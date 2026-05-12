@@ -288,7 +288,7 @@ export default function Home(){
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; 2024 TST School Portal. All rights reserved.</p>
+            <p>&copy; 2026 TST School Portal. All rights reserved.</p>
           </div>
         </div>
       </footer>
