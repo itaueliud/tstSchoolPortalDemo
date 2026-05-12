@@ -1,12 +1,19 @@
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
-import { Users, BookOpen, FileText, Bell, CheckCircle, Award, Calendar } from 'lucide-react'
+import { Calendar, ClipboardCheck, Upload, Award, BarChart3, MessageSquare, Bell } from 'lucide-react'
 
 const classes = [
-  { name: 'Form 4A - Mathematics', students: 32, period: '09:00 - 10:00' },
-  { name: 'Form 3B - Mathematics', students: 28, period: '10:30 - 11:30' },
-  { name: 'Form 4C - Science', students: 35, period: '01:00 - 02:00' },
-  { name: 'Form 3A - Science', students: 30, period: '02:30 - 03:30' },
+  { name: 'Form 4A - Mathematics', students: 32, period: '09:00 - 10:00', room: 'Room 12' },
+  { name: 'Form 3B - Mathematics', students: 28, period: '10:30 - 11:30', room: 'Room 9' },
+  { name: 'Form 4C - Science', students: 35, period: '01:00 - 02:00', room: 'Lab 2' },
+  { name: 'Form 3A - Science', students: 30, period: '02:30 - 03:30', room: 'Lab 1' },
+]
+
+const attendance = [
+  { student: 'John Doe', status: 'Present' },
+  { student: 'Jane Smith', status: 'Absent' },
+  { student: 'Mike Brown', status: 'Late' },
+  { student: 'Aisha Khan', status: 'Present' },
 ]
 
 const assignments = [
@@ -21,10 +28,21 @@ const pendingGrades = [
   { student: 'Mike Brown', exam: 'Project Work', class: 'Form 4C', status: 'Pending' },
 ]
 
+const performance = [
+  { subject: 'Mathematics', average: 84, trend: '+6%' },
+  { subject: 'Science', average: 79, trend: '+3%' },
+  { subject: 'English', average: 88, trend: '+4%' },
+]
+
+const messages = [
+  { name: 'Mrs. Wanjiku', role: 'Parent', message: 'Could you share the revision notes for this week?', time: '10m ago' },
+  { name: 'John Doe', role: 'Student', message: 'I submitted my assignment late after network issues.', time: '35m ago' },
+  { name: 'Mr. Kariuki', role: 'Parent', message: 'Please confirm the grade for the last test.', time: '1h ago' },
+]
+
 export default function TeacherDashboard(){
   return (
     <Layout role="teacher">
-      {/* Key Stats */}
       <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="My Classes" value={4} />
         <StatCard title="Total Students" value={126} />
@@ -32,11 +50,10 @@ export default function TeacherDashboard(){
         <StatCard title="Pending Grades" value={23} />
       </div>
 
-      {/* My Classes */}
       <div className="md:col-span-2 card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">My Classes</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Class Management</h3>
         </div>
         <div className="space-y-3">
           {classes.map((cls, idx) => (
@@ -45,6 +62,7 @@ export default function TeacherDashboard(){
                 <div className="flex-1">
                   <p className="font-semibold text-gray-900">{cls.name}</p>
                   <p className="text-sm text-gray-500">{cls.period}</p>
+                  <p className="text-xs text-gray-400 mt-1">{cls.room}</p>
                 </div>
                 <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
                   {cls.students} students
@@ -55,31 +73,38 @@ export default function TeacherDashboard(){
         </div>
       </div>
 
-      {/* Announcements */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Bell className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
+          <ClipboardCheck className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Attendance Marking</h3>
         </div>
         <div className="space-y-3">
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm font-semibold text-green-900">📚 Exam Schedules</p>
-            <p className="text-xs text-green-700 mt-1">Final exams next month</p>
-          </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm font-semibold text-blue-900">📊 Grade Submission</p>
-            <p className="text-xs text-blue-700 mt-1">Submit marks by end of week</p>
-          </div>
+          {attendance.map((student, idx) => (
+            <div key={idx} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+              <div>
+                <p className="font-semibold text-gray-900">{student.student}</p>
+                <p className="text-xs text-gray-500">Today’s class register</p>
+              </div>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                student.status === 'Present'
+                  ? 'bg-green-100 text-green-700'
+                  : student.status === 'Late'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+              }`}>
+                {student.status}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Assignments Status */}
       <div className="md:col-span-3 card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Assignment Submission Status</h3>
+          <Upload className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Upload Assignments and Notes</h3>
         </div>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {assignments.map((assignment, idx) => (
             <div key={idx} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
               <div className="flex items-start justify-between mb-2">
@@ -90,21 +115,27 @@ export default function TeacherDashboard(){
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-600">✓</span>
                   <span className="text-gray-600"><strong>{assignment.submitted}</strong> submitted</span>
                 </span>
                 <span className="text-yellow-600"><strong>{assignment.pending}</strong> pending</span>
               </div>
             </div>
           ))}
+          <div className="p-4 border border-dashed border-green-200 rounded-lg bg-green-50/40">
+            <p className="font-semibold text-gray-900 mb-2">Upload lesson notes</p>
+            <p className="text-sm text-gray-600 mb-3">Add PDFs, slides, or revision guides for students.</p>
+            <button className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">
+              Upload File
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Pending Grades */}
       <div className="md:col-span-2 card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Award className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Pending Grades</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Grade Submission</h3>
         </div>
         <div className="space-y-2">
           {pendingGrades.map((grade, idx) => (
@@ -121,22 +152,77 @@ export default function TeacherDashboard(){
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+          <BarChart3 className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Student Performance Analytics</h3>
         </div>
-        <div className="flex flex-col gap-2">
-          <button className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm">
-            ✏️ Mark Attendance
-          </button>
-          <button className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm">
-            📤 Upload Assignment
-          </button>
-          <button className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm">
-            📊 Submit Grades
-          </button>
+        <div className="space-y-3">
+          {performance.map((item, idx) => (
+            <div key={idx} className="p-3 border border-gray-100 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-semibold text-gray-900">{item.subject}</p>
+                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  {item.trend}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-green-600 h-2 rounded-full" style={{ width: `${item.average}%` }} />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Average score: {item.average}%</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="md:col-span-3 card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Messaging with Parents and Students</h3>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            {messages.map((item, idx) => (
+              <div key={idx} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-gray-900">{item.name}</p>
+                  <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    {item.role}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">{item.message}</p>
+                <p className="text-xs text-gray-400 mt-2">{item.time}</p>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 border border-dashed border-green-200 rounded-lg bg-green-50/40">
+            <p className="font-semibold text-gray-900 mb-2">Compose a message</p>
+            <p className="text-sm text-gray-600 mb-3">Send updates to parents or students from one place.</p>
+            <div className="space-y-3">
+              <div className="h-10 rounded-lg bg-white border border-gray-200" />
+              <div className="h-24 rounded-lg bg-white border border-gray-200" />
+              <button className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">
+                Send Message
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm font-semibold text-green-900">📚 Exam Schedules</p>
+            <p className="text-xs text-green-700 mt-1">Final exams next month</p>
+          </div>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-semibold text-blue-900">📊 Grade Submission</p>
+            <p className="text-xs text-blue-700 mt-1">Submit marks by end of week</p>
+          </div>
         </div>
       </div>
     </Layout>
