@@ -1,7 +1,6 @@
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
 import { Users, Banknote, FileText, Bell, CreditCard, BarChart3, Settings } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const analyticsData = [
   { month: 'Jan', attendance: 85, revenue: 120 },
@@ -47,17 +46,31 @@ export default function AdminDashboard(){
           <BarChart3 className="w-5 h-5 text-green-600" />
           <h3 className="text-lg font-semibold text-gray-900">School Analytics</h3>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={analyticsData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="attendance" stroke="#16a34a" strokeWidth={2} />
-            <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="space-y-4">
+          {analyticsData.map((item) => (
+            <div key={item.month} className="grid grid-cols-12 gap-3 items-center">
+              <div className="col-span-2 sm:col-span-1 text-sm font-semibold text-gray-700">{item.month}</div>
+              <div className="col-span-10 sm:col-span-5">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <span>Attendance</span>
+                  <span>{item.attendance}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-green-600" style={{ width: `${item.attendance}%` }} />
+                </div>
+              </div>
+              <div className="col-span-10 col-start-3 sm:col-span-5 sm:col-start-7">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <span>Revenue</span>
+                  <span>KES {item.revenue}K</span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${item.revenue}%` }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Announcements */}
