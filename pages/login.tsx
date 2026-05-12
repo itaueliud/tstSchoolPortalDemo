@@ -33,11 +33,22 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Green Gradient with School Info */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-600 via-green-500 to-emerald-600 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-cover bg-center"
+        style={{ backgroundImage: "url('/login.jpg')" }}
+      >
+        {/* Translucent green overlay and subtle grid pattern */}
+        <div className="absolute inset-0" aria-hidden>
+          <div className="absolute inset-0 bg-green-700/55 mix-blend-multiply" />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+              backgroundSize: '48px 48px, 48px 48px',
+              opacity: 0.18,
+            }}
+          />
         </div>
 
         {/* Content */}
