@@ -1,17 +1,12 @@
 import React from 'react'
 import { useTheme } from '../src/theme'
-import { Menu, Bell, LogOut } from 'lucide-react'
+import { Bell, LogOut } from 'lucide-react'
 
 export default function Topbar({ role }: { role: string }){
   const { dark, toggle } = useTheme()
   return (
     <header className="flex items-center justify-between p-4 md:p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-      <div className="flex items-center gap-4">
-        <button className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-          <Menu size={20} />
-        </button>
-        <div className="text-sm font-semibold text-green-600 uppercase tracking-wide">{role} Dashboard</div>
-      </div>
+      <div className="text-sm font-semibold text-green-600 uppercase tracking-wide">{role} Dashboard</div>
       <div className="flex items-center gap-4">
         <button onClick={toggle} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
           {dark? '☀️' : '🌙'}

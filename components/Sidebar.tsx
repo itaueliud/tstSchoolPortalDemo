@@ -23,13 +23,15 @@ export default function Sidebar({ role }: { role: string }) {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-40 p-2 bg-green-600 text-white rounded-lg"
-      >
-        {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
+      {/* Mobile Menu Button - Only show on mobile and when sidebar is closed */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg"
+        >
+          {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      )}
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
@@ -47,10 +49,10 @@ export default function Sidebar({ role }: { role: string }) {
       }`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className={`flex items-center gap-3 ${
-            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          <div className={`flex items-center gap-3 flex-1 ${
+            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'
           } transition-opacity`}>
-            <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
               <Home className="w-6 h-6 text-green-600" />
             </div>
             <div>
@@ -59,10 +61,11 @@ export default function Sidebar({ role }: { role: string }) {
             </div>
           </div>
           
-          {/* Collapse Toggle */}
+          {/* Collapse Toggle - Always visible on desktop, works when collapsed too */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors hidden md:block"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors hidden md:flex items-center justify-center flex-shrink-0"
+            aria-label="Toggle sidebar"
           >
             <ChevronDown
               size={20}
