@@ -9,17 +9,67 @@ const Icon = ({ children }: { children: React.ReactNode }) => (
   <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 text-green-600">{children}</div>
 )
 
+const getRoleMenuItems = (role: string) => {
+  const baseItem = { label: 'Dashboard', href: `/${role}/dashboard`, demo: false }
+  
+  switch(role) {
+    case 'admin':
+      return [
+        baseItem,
+        { label: 'Student & Staff Stats', href: '#', demo: true },
+        { label: 'School Analytics', href: '#', demo: true },
+        { label: 'User Management', href: '#', demo: true },
+        { label: 'Fee Tracking', href: '#', demo: true },
+        { label: 'System Settings', href: '#', demo: true },
+        { label: 'Reports & Exports', href: '#', demo: true },
+        { label: 'Announcements', href: '#', demo: true },
+      ]
+    case 'teacher':
+      return [
+        baseItem,
+        { label: 'Class Management', href: '#', demo: true },
+        { label: 'Attendance Marking', href: '#', demo: true },
+        { label: 'Assignments & Notes', href: '#', demo: true },
+        { label: 'Grade Submission', href: '#', demo: true },
+        { label: 'Performance Analytics', href: '#', demo: true },
+        { label: 'Messaging', href: '#', demo: true },
+      ]
+    case 'student':
+      return [
+        baseItem,
+        { label: 'Timetable', href: '#', demo: true },
+        { label: 'Assignments & LMS', href: '#', demo: true },
+        { label: 'Exam Results', href: '#', demo: true },
+        { label: 'Attendance', href: '#', demo: true },
+        { label: 'Fee Balance', href: '#', demo: true },
+        { label: 'Notifications', href: '#', demo: true },
+      ]
+    case 'parent':
+      return [
+        baseItem,
+        { label: 'Academic Progress', href: '#', demo: true },
+        { label: 'Attendance Reports', href: '#', demo: true },
+        { label: 'Fee Payment', href: '#', demo: true },
+        { label: 'Teacher Communication', href: '#', demo: true },
+        { label: 'School Announcements', href: '#', demo: true },
+      ]
+    default:
+      return [baseItem]
+  }
+}
+
 export default function Sidebar({ role }: { role: string }) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [demoModal, setDemoModal] = useState<string | null>(null)
   
-  const items = [
-    { label: 'Dashboard', href: `/${role}/dashboard` },
-    { label: 'Students', href: `/${role}/students` },
-    { label: 'Attendance', href: `/${role}/attendance` },
-    { label: 'Fees', href: `/${role}/fees` },
-  ]
+  const items = getRoleMenuItems(role)
+
+  const handleDemoFeatureClick = (label: string) => {
+    setDemoModal(label)
+    setTimeout(() => setDemoModal(null), 3000)
+  }
 
   return (
     <>
@@ -37,6 +87,14 @@ export default function Sidebar({ role }: { role: string }) {
           className="md:hidden fixed inset-0 bg-black/50 z-30"
           onClick={() => setIsMobileOpen(false)}
         />
+      )}
+
+      {/* Demo Feature Toast */}
+      {demoModal && (
+        <div className="fixed bottom-4 left-4 md:left-auto md:right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg max-w-xs animate-pulse">
+          <p className="font-semibold">{demoModal}</p>
+          <p className="text-sm text-green-100">This is a demo feature. Coming soon in the live system!</p>
+        </div>
       )}
 
       {/* Sidebar */}
@@ -75,29 +133,51 @@ export default function Sidebar({ role }: { role: string }) {
         </div>
 
         {/* Navigation */}
-        <nav className="space-y-2 flex-1">
+        <nav className="space-y-2 flex-1 overflow-y-auto">
           {items.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              onClick={() => setIsMobileOpen(false)}
-              className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                router.pathname === it.href
-                  ? 'bg-white/25 font-semibold'
-                  : 'hover:bg-white/15'
-              }`}
-            >
-              <Icon>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M3 12h18" strokeWidth="2" />
-                </svg>
-              </Icon>
-              <span className={`font-medium transition-opacity ${
-                isOpen ? 'opacity-100' : 'opacity-0 hidden'
-              }`}>
-                {it.label}
-              </span>
-            </Link>
+            it.demo ? (
+              <button
+                key={it.label}
+                onClick={() => {
+                  handleDemoFeatureClick(it.label)
+                  setIsMobileOpen(false)
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-white/15 text-left"
+              >
+                <Icon>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M3 12h18" strokeWidth="2" />
+                  </svg>
+                </Icon>
+                <span className={`font-medium transition-opacity ${
+                  isOpen ? 'opacity-100' : 'opacity-0 hidden'
+                }`}>
+                  {it.label}
+                </span>
+              </button>
+            ) : (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={() => setIsMobileOpen(false)}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  router.pathname === it.href
+                    ? 'bg-white/25 font-semibold'
+                    : 'hover:bg-white/15'
+                }`}
+              >
+                <Icon>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M3 12h18" strokeWidth="2" />
+                  </svg>
+                </Icon>
+                <span className={`font-medium transition-opacity ${
+                  isOpen ? 'opacity-100' : 'opacity-0 hidden'
+                }`}>
+                  {it.label}
+                </span>
+              </Link>
+            )
           ))}
         </nav>
 
