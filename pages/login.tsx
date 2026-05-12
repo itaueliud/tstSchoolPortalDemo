@@ -151,18 +151,18 @@ export default function Login() {
           {/* Role Selection */}
           <div className="mb-8">
             <label className="block text-sm font-semibold text-gray-900 mb-4">Select Role</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               {roleButtons.map((btn) => (
                 <button
                   key={btn.id}
                   onClick={() => setRole(btn.id as UserRole)}
-                  className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                  className={`h-16 px-3 rounded-lg border text-xs font-medium transition-all flex flex-col items-center justify-center gap-1.5 ${
                     role === btn.id
                       ? 'bg-green-600 text-white border-2 border-green-600'
                       : 'bg-gray-100 text-gray-900 border-2 border-transparent hover:border-green-600'
                   }`}
                 >
-                  <div className="text-lg mb-1">{btn.icon}</div>
+                  <div className="text-base leading-none">{btn.icon}</div>
                   {btn.label}
                 </button>
               ))}
