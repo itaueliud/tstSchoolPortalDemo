@@ -155,6 +155,7 @@ export default function Login() {
               {roleButtons.map((btn) => (
                 <button
                   key={btn.id}
+                  type="button"
                   onClick={() => setRole(btn.id as UserRole)}
                   className={`h-16 px-3 rounded-lg border text-xs font-medium transition-all flex flex-col items-center justify-center gap-1.5 ${
                     role === btn.id
