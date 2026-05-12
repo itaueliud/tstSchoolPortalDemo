@@ -3,9 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --bg: #071B2A;
+  --bg: #0b1f4d;
   --neon: #5BE12C;
-  --deep: #0C3B66;
+  --deep: #123a78;
+  --navy-900: #0b1f4d;
+  --navy-800: #123a78;
+  --navy-700: #1b4f9a;
+  --navy-100: #dbeafe;
+  --ink: #e5edff;
 }
 
 html, body, #__next {
@@ -14,21 +19,21 @@ html, body, #__next {
 
 body {
   font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-  background: #f9fafb;
-  color: #1f2937;
+  background: var(--navy-900);
+  color: var(--ink);
 }
 
-/* glass card - updated for light theme */
+/* Base surface styling for a navy theme */
 .card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--navy-800);
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.45);
   border-radius: 12px;
   transition: box-shadow 0.2s;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.6);
 }
 
 a { color: inherit; }
@@ -41,4 +46,30 @@ a { color: inherit; }
 /* responsive tweaks */
 @media (max-width: 640px) {
   .hide-sm { display: none; }
+}
+
+/* Global utility remap to keep existing pages navy-blue without full component rewrites */
+.bg-white,
+.bg-gray-50,
+.bg-gray-100,
+.bg-blue-50,
+.bg-green-50,
+.bg-emerald-50,
+.bg-purple-50 {
+  background-color: var(--navy-800) !important;
+}
+
+.border-gray-100,
+.border-gray-200,
+.border-green-100,
+.border-blue-200 {
+  border-color: rgba(147, 197, 253, 0.3) !important;
+}
+
+.text-gray-900,
+.text-gray-700,
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 {
+  color: var(--ink) !important;
 }
