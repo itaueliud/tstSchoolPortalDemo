@@ -1,6 +1,9 @@
+import Link from 'next/link'
+import { useMemo } from 'react'
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
 import { Calendar, ClipboardCheck, Upload, Award, BarChart3, MessageSquare, Bell } from 'lucide-react'
+import { useDashboardSummary } from '../../src/useDashboardSummary'
 
 const classes = [
   { name: 'Form 4A - Mathematics', students: 32, period: '09:00 - 10:00', room: 'Room 12' },
@@ -14,12 +17,6 @@ const attendance = [
   { student: 'Jane Smith', status: 'Absent' },
   { student: 'Mike Brown', status: 'Late' },
   { student: 'Aisha Khan', status: 'Present' },
-]
-
-const assignments = [
-  { title: 'Algebra Homework', class: 'Form 4A', dueDate: '2026-05-15', submitted: 28, pending: 4 },
-  { title: 'Science Lab Report', class: 'Form 4C', dueDate: '2026-05-18', submitted: 32, pending: 3 },
-  { title: 'Essay Assignment', class: 'Form 3B', dueDate: '2026-05-20', submitted: 22, pending: 6 },
 ]
 
 const pendingGrades = [
@@ -41,14 +38,26 @@ const messages = [
 ]
 
 export default function TeacherDashboard(){
+  const { data, loading, error } = useDashboardSummary('teacher')
+  const summary = data?.summary || {}
+  const announcements = data?.announcements || []
+  const summaryValues = summary as Record<string, string | number | undefined>
+
+  const stats = useMemo<Array<{ title: string; value: string | number }>>(() => ([
+    { title: 'My Classes', value: Number(summaryValues.classes) || 4 },
+    { title: 'Total Students', value: Number(summaryValues.students) || 126 },
+    { title: 'Active Assignments', value: Number(summaryValues.assignments) || 8 },
+    { title: 'Pending Grades', value: Number(summaryValues.pending_grades) || 23 },
+  ]), [summaryValues])
+
   return (
     <Layout role="teacher">
       <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="My Classes" value={4} />
-        <StatCard title="Total Students" value={126} />
-        <StatCard title="Active Assignments" value={8} />
-        <StatCard title="Pending Grades" value={23} />
+        {stats.map((stat) => <StatCard key={stat.title} title={stat.title} value={stat.value} />)}
       </div>
+
+      {loading && <div className="md:col-span-3 text-sm text-white/60">Loading dashboard summary from backend...</div>}
+      {error && <div className="md:col-span-3 text-sm text-red-500">{error}</div>}
 
       <div className="md:col-span-2 card p-6">
         <div className="flex items-center gap-2 mb-4">
@@ -76,59 +85,30 @@ export default function TeacherDashboard(){
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-4">
           <ClipboardCheck className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Attendance Marking</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Attendance Management</h3>
         </div>
         <div className="space-y-3">
-          {attendance.map((student, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-              <div>
-                <p className="font-semibold text-gray-900">{student.student}</p>
-                <p className="text-xs text-gray-500">Today’s class register</p>
-              </div>
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                student.status === 'Present'
-                  ? 'bg-green-100 text-green-700'
-                  : student.status === 'Late'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-              }`}>
-                {student.status}
-              </span>
-            </div>
-          ))}
+          <div className="rounded-lg border border-gray-100 bg-green-50 p-4">
+            <p className="font-semibold text-gray-900">Open the live attendance register</p>
+            <p className="text-sm text-gray-600 mt-1">Mark present, absent, late, or leave for an entire class and date, then edit the saved records when needed.</p>
+          </div>
+          <Link href="/teacher/attendance" className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+            Open Attendance Register
+          </Link>
         </div>
       </div>
 
       <div className="md:col-span-3 card p-6">
         <div className="flex items-center gap-2 mb-4">
           <Upload className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Upload Assignments and Notes</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Assignments and Notes</h3>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {assignments.map((assignment, idx) => (
-            <div key={idx} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{assignment.title}</p>
-                  <p className="text-sm text-gray-500">{assignment.class} • Due: {assignment.dueDate}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1">
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-100 text-green-600">✓</span>
-                  <span className="text-gray-600"><strong>{assignment.submitted}</strong> submitted</span>
-                </span>
-                <span className="text-yellow-600"><strong>{assignment.pending}</strong> pending</span>
-              </div>
-            </div>
-          ))}
-          <div className="p-4 border border-dashed border-green-200 rounded-lg bg-green-50/40">
-            <p className="font-semibold text-gray-900 mb-2">Upload lesson notes</p>
-            <p className="text-sm text-gray-600 mb-3">Add PDFs, slides, or revision guides for students.</p>
-            <button className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors">
-              Upload File
-            </button>
-          </div>
+        <div className="rounded-lg border border-gray-100 bg-green-50/50 p-4">
+          <p className="font-semibold text-gray-900">Use the live LMS workspace</p>
+          <p className="text-sm text-gray-600 mt-1">Create and publish assignments, attach links/notes, and grade student submissions from one page.</p>
+          <Link href="/teacher/assignments" className="mt-3 inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+            Open LMS Workspace
+          </Link>
         </div>
       </div>
 
@@ -215,14 +195,15 @@ export default function TeacherDashboard(){
           <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
         </div>
         <div className="space-y-3">
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm font-semibold text-green-900">📚 Exam Schedules</p>
-            <p className="text-xs text-green-700 mt-1">Final exams next month</p>
-          </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm font-semibold text-blue-900">📊 Grade Submission</p>
-            <p className="text-xs text-blue-700 mt-1">Submit marks by end of week</p>
-          </div>
+          {(announcements.length ? announcements : [
+            { title: 'Exam Schedules', body: 'Final exams next month' },
+            { title: 'Grade Submission', body: 'Submit marks by end of week' },
+          ]).map((announcement, idx) => (
+            <div key={idx} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm font-semibold text-green-900">📚 {announcement.title}</p>
+              <p className="text-xs text-green-700 mt-1">{announcement.body}</p>
+            </div>
+          ))}
         </div>
       </div>
     </Layout>

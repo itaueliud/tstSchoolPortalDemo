@@ -2,15 +2,19 @@ import React from 'react'
 import { useTheme } from '../src/theme'
 import { Bell, LogOut } from 'lucide-react'
 import { useRouter } from 'next/router'
-import { clearDemoSession, type UserRole } from '../src/auth'
+import { clearAuthSession, getAuthSession, type UserRole } from '../src/auth'
 
 export default function Topbar({ role }: { role: UserRole }){
   const { dark, toggle } = useTheme()
   const router = useRouter()
-  const userInitial = 'J'
+  const session = getAuthSession()
+  const userName = session?.user
+    ? `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim() || session.user.username
+    : session?.username || `John ${role.charAt(0).toUpperCase() + role.slice(1)}`
+  const userInitial = userName.charAt(0).toUpperCase()
 
   const handleLogout = () => {
-    clearDemoSession()
+    clearAuthSession()
     router.push('/login')
   }
 
@@ -31,7 +35,7 @@ export default function Topbar({ role }: { role: UserRole }){
           <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold text-sm">
             {userInitial}
           </div>
-          <div className="text-sm text-gray-900 font-medium">John {role.charAt(0).toUpperCase() + role.slice(1)}</div>
+          <div className="text-sm text-gray-900 font-medium">{userName}</div>
           <button onClick={handleLogout} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Logout">
             <LogOut size={16} />
           </button>

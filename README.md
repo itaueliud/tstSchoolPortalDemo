@@ -28,3 +28,8 @@ Open http://localhost:3000
 
 Notes
 - This is a UI-first demo with mock APIs. Replace mocks with real backend and DB as needed.
+
+Backend
+
+- A Django + MongoDB backend scaffold now lives in `backend/`.
+- Use `backend/README.md` for setup, data model, and API endpoint details.

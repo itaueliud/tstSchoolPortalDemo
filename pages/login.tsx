@@ -1,10 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Eye, EyeOff, Home } from 'lucide-react';
-import { saveDemoSession, type UserRole } from '../src/auth';
+import { saveAuthSession, type UserRole } from '../src/auth';
+import { requestJson } from '../src/apiClient';
+
+type LoginResponse = {
+  token: string
+  refresh: string
+  role: UserRole
+  user: {
+    username: string
+    first_name?: string
+    last_name?: string
+    email?: string
+    role: UserRole
+    phone_number?: string
+  }
+}
 
 export default function Login() {
   const [role, setRole] = useState<UserRole | null>(null);
@@ -12,27 +27,53 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    const roleParam = router.query.role;
+    if (typeof roleParam === 'string' && ['student', 'parent', 'teacher', 'admin'].includes(roleParam)) {
+      setRole(roleParam as UserRole);
+    }
+  }, [router.query.role]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) {
-      alert('Please select a role to continue');
+      setError('Please select a role to continue');
       return;
     }
 
-    saveDemoSession(role, admissionNo || 'demo-user');
+    setLoading(true);
+    setError('');
 
-    const routeMap: Record<string, string> = {
-      student: '/student/dashboard',
-      parent: '/parent/dashboard',
-      teacher: '/teacher/dashboard',
-      admin: '/admin/dashboard',
-    };
+    try {
+      const response = await requestJson<LoginResponse>('/api/auth/login/', {
+        method: 'POST',
+        auth: false,
+        body: JSON.stringify({
+          identifier: admissionNo,
+          password,
+          role,
+        }),
+      });
 
-    const target = routeMap[role] || '/';
-    router.push(target);
+      saveAuthSession({
+        role: response.role,
+        token: response.token,
+        refreshToken: response.refresh,
+        username: response.user.username,
+        user: response.user,
+      });
+
+      await router.push(`/${response.role}/dashboard`);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const roleButtons = [
@@ -166,10 +207,12 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all mt-6"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all mt-6 disabled:opacity-70"
             >
-              Login
+              {loading ? 'Signing in...' : 'Login'}
             </button>
+            {error && <p className="text-sm text-red-600">{error}</p>}
           </form>
         </div>
       </div>

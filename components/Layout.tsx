@@ -2,20 +2,20 @@ import React, { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
-import { getDemoRole, type UserRole } from '../src/auth'
+import { getAuthSession, type UserRole } from '../src/auth'
 
 export default function Layout({ children, role }: { children: React.ReactNode, role: UserRole }){
   const router = useRouter()
 
   useEffect(() => {
-    const sessionRole = getDemoRole()
-    if (!sessionRole) {
+    const session = getAuthSession()
+    if (!session || !session.token) {
       router.replace('/login')
       return
     }
 
-    if (sessionRole !== role) {
-      router.replace(`/${sessionRole}/dashboard`)
+    if (session.role !== role) {
+      router.replace(`/${session.role}/dashboard`)
     }
   }, [role, router])
 

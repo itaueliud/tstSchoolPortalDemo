@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 import { Home, ChevronDown, Menu, X } from 'lucide-react'
-import { clearDemoSession, type UserRole } from '../src/auth'
+import { clearAuthSession, type UserRole } from '../src/auth'
 import { getRoleMenuItems } from '../src/navigation'
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
@@ -19,7 +19,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
   const items = getRoleMenuItems(role)
 
   const handleLogout = () => {
-    clearDemoSession()
+    clearAuthSession()
     router.push('/login')
   }
 

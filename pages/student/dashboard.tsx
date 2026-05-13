@@ -1,53 +1,32 @@
+import Link from 'next/link'
+import { useMemo } from 'react'
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
-import { Calendar, BookOpen, Award, Users, CreditCard, Bell } from 'lucide-react'
+import { BookOpen, Bell, CreditCard } from 'lucide-react'
+import { useDashboardSummary } from '../../src/useDashboardSummary'
 
 export default function StudentDashboard(){
-  const timetable = [
-    { day: 'Monday', subject: 'Mathematics', time: '09:00 AM - 10:00 AM', teacher: 'Mr. Smith' },
-    { day: 'Tuesday', subject: 'English', time: '10:30 AM - 11:30 AM', teacher: 'Mrs. Johnson' },
-    { day: 'Wednesday', subject: 'Science', time: '01:00 PM - 02:00 PM', teacher: 'Mr. Williams' },
-  ]
+  const { data, loading, error } = useDashboardSummary('student')
+  const summary = data?.summary || {}
+  const announcements = data?.announcements || []
+  const summaryValues = summary as Record<string, string | number | undefined>
 
-  const assignments = [
-    { title: 'Mathematics Assignment 5', subject: 'Mathematics', dueDate: '2026-05-20', status: 'Pending' },
-    { title: 'English Essay', subject: 'English', dueDate: '2026-05-18', status: 'Submitted' },
-    { title: 'Science Project', subject: 'Science', dueDate: '2026-05-25', status: 'In Progress' },
-  ]
-
-  const examResults = [
-    { exam: 'Term 1 Exams', date: '2026-03-15', gpa: '3.8', remarks: 'Excellent Performance' },
-    { exam: 'Mid-Term Test', date: '2026-04-20', gpa: '3.6', remarks: 'Good Performance' },
-  ]
+  const stats = useMemo<Array<{ title: string; value: string | number }>>(() => ([
+    { title: 'Attendance', value: String(summaryValues.attendance || '92%') },
+    { title: 'Fee Balance', value: summaryValues.fees_due ? `KES ${summaryValues.fees_due}` : 'KES 12,450' },
+    { title: 'Active Assignments', value: Number(summaryValues.assignments) || 3 },
+    { title: 'Current GPA', value: String(summaryValues.gpa || '3.8') },
+  ]), [summaryValues])
 
   return (
     <Layout role="student">
       {/* Key Stats */}
       <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Attendance" value={'92%'} />
-        <StatCard title="Fee Balance" value={'KES 12,450'} />
-        <StatCard title="Active Assignments" value={3} />
-        <StatCard title="Current GPA" value={'3.8'} />
+        {stats.map((stat) => <StatCard key={stat.title} title={stat.title} value={stat.value} />)}
       </div>
 
-      {/* Timetable */}
-      <div className="md:col-span-2 card p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Weekly Timetable</h3>
-        </div>
-        <div className="space-y-3">
-          {timetable.map((item, idx) => (
-            <div key={idx} className="flex items-start justify-between p-3 border border-gray-100 rounded-lg hover:bg-green-50 transition-colors">
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">{item.subject}</p>
-                <p className="text-sm text-gray-500">{item.day} • {item.time}</p>
-                <p className="text-xs text-gray-400 mt-1">Instructor: {item.teacher}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {loading && <div className="md:col-span-3 text-sm text-white/60">Loading dashboard summary from backend...</div>}
+      {error && <div className="md:col-span-3 text-sm text-red-500">{error}</div>}
 
       {/* Notifications */}
       <div className="card p-6">
@@ -56,14 +35,15 @@ export default function StudentDashboard(){
           <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
         </div>
         <div className="space-y-3">
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm font-semibold text-green-900">🎉 PTA Meeting</p>
-            <p className="text-xs text-green-700 mt-1">This Saturday at 10:00 AM</p>
-          </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm font-semibold text-blue-900">📚 Exams Start</p>
-            <p className="text-xs text-blue-700 mt-1">Next month - Prepare well!</p>
-          </div>
+          {(announcements.length ? announcements : [
+            { title: 'PTA Meeting', body: 'This Saturday at 10:00 AM' },
+            { title: 'Exams Start', body: 'Next month - Prepare well!' },
+          ]).map((announcement, idx) => (
+            <div key={idx} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm font-semibold text-green-900">🎉 {announcement.title}</p>
+              <p className="text-xs text-green-700 mt-1">{announcement.body}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -73,50 +53,25 @@ export default function StudentDashboard(){
           <BookOpen className="w-5 h-5 text-green-600" />
           <h3 className="text-lg font-semibold text-gray-900">Assignments & LMS</h3>
         </div>
-        <div className="space-y-3">
-          {assignments.map((assignment, idx) => (
-            <div key={idx} className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{assignment.title}</p>
-                  <p className="text-sm text-gray-500">{assignment.subject}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                  assignment.status === 'Submitted' ? 'bg-green-100 text-green-700' :
-                  assignment.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {assignment.status}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">Due: {assignment.dueDate}</p>
-            </div>
-          ))}
+        <div className="rounded-lg border border-gray-100 bg-green-50/50 p-4">
+          <p className="font-semibold text-gray-900">Open your live assignments workspace</p>
+          <p className="text-sm text-gray-600 mt-1">Read lesson notes, view assignment deadlines, submit work, and track grading feedback in one place.</p>
+          <Link href="/student/assignments" className="mt-3 inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+            Open Assignments & LMS
+          </Link>
         </div>
       </div>
 
-      {/* Exam Results */}
-      <div className="card p-6">
+      {/* Fee Payments */}
+      <div className="md:col-span-3 card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Award className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Exam Results</h3>
+          <CreditCard className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Fee Statements</h3>
         </div>
-        <div className="space-y-3">
-          {examResults.map((result, idx) => (
-            <div key={idx} className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900">{result.exam}</p>
-                  <p className="text-xs text-gray-500 mt-1">{result.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-green-600">{result.gpa}</p>
-                  <p className="text-xs text-green-600">{result.remarks}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm text-gray-600 mb-4">View your fee statements, payment history, and download receipts in the dedicated fee page.</p>
+        <Link href="/student/fees" className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+          Open Fees & Receipts
+        </Link>
       </div>
     </Layout>
   )

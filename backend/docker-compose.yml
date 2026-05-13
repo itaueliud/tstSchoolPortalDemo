@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: school_portal_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: school_portal_user
+      MONGO_INITDB_ROOT_PASSWORD: school_portal_password
+      MONGO_INITDB_DATABASE: school_portal
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - school_portal_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  school_portal_network:
+    driver: bridge

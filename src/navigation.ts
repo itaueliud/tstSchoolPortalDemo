@@ -10,6 +10,8 @@ const roleSections: Record<UserRole, Array<{ label: string; slug: string }>> = {
   admin: [
     { label: 'Student & Staff Stats', slug: 'stats' },
     { label: 'School Analytics', slug: 'analytics' },
+    { label: 'Class Management', slug: 'classes' },
+    { label: 'Attendance Management', slug: 'attendance' },
     { label: 'User Management', slug: 'users' },
     { label: 'Fee Tracking', slug: 'fees' },
     { label: 'System Settings', slug: 'settings' },

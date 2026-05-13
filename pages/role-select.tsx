@@ -10,7 +10,7 @@ export default function RoleSelect(){
           <p className="text-white/70 mb-4">Choose a role to preview the TechSwiftTrix dashboard.</p>
           <div className="grid grid-cols-2 gap-3">
             {roles.map(r=> (
-              <Link key={r} href={`/${r}/dashboard`} className="p-3 rounded-lg bg-white/6 text-center">{r.toUpperCase()}</Link>
+              <Link key={r} href={`/login?role=${r}`} className="p-3 rounded-lg bg-white/6 text-center">{r.toUpperCase()}</Link>
             ))}
           </div>
         </div>

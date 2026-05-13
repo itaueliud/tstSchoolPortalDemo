@@ -1,0 +1,17 @@
+LMS B test plan (no runtime in current environment)
+
+1) Backend unit/integration tests (once Django deps available)
+- Assignment CRUD permission tests
+- Student can submit for published assignment
+- Duplicate submission upsert behavior
+- Teacher can update submission with feedback/grade
+- Submission listing filters by assignment/class/student
+
+2) Frontend tests (next):
+- Teacher assignments page renders assignments and submissions
+- Student assignments page submits content and shows status
+
+3) API contract tests:
+- Shapes of JSON for endpoints
+- Error responses: 403/400/404
+
