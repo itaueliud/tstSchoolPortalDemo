@@ -18,6 +18,7 @@ type AssignmentSubmission = {
   max_score: number
   teacher_feedback: string
   content: string
+  is_late?: boolean
 }
 
 type AssignmentItem = {
