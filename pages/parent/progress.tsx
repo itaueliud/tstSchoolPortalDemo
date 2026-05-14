@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useMemo, useState } from 'react'
 import Layout from '../../components/Layout'
 import { useDashboardSummary } from '../../src/useDashboardSummary'

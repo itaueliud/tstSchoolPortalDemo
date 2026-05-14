@@ -1,4 +1,6 @@
-﻿import { useRouter } from 'next/router'
+﻿'use client'
+
+import { useRouter } from 'next/router'
 import Layout from '../../components/Layout'
 import type { UserRole } from '../../src/auth'
 import { getRoleMenuItems } from '../../src/navigation'

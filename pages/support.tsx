@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import LandingNav from '../components/LandingNav'
 import { useState } from 'react'

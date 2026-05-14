@@ -1,6 +1,7 @@
 from bson import ObjectId
 from rest_framework import exceptions
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.settings import api_settings
 
 from .models import SchoolUser
 
@@ -11,9 +12,7 @@ class MongoJWTAuthentication(JWTAuthentication):
     """
 
     def get_user(self, validated_token):
-        user_id_claim = self.user_id_claim
-        user_id = validated_token.get(user_id_claim)
-
+        user_id = validated_token.get(api_settings.USER_ID_CLAIM)
         if user_id is None:
             raise exceptions.AuthenticationFailed("Token contained no recognizable user identification")
 
@@ -30,8 +29,6 @@ class MongoJWTAuthentication(JWTAuthentication):
                 break
             except SchoolUser.DoesNotExist:
                 continue
-            except Exception:
-                continue
 
         if user is None:
             raise exceptions.AuthenticationFailed("User not found", code="user_not_found")
@@ -40,4 +37,3 @@ class MongoJWTAuthentication(JWTAuthentication):
             raise exceptions.AuthenticationFailed("User is inactive", code="user_inactive")
 
         return user
-

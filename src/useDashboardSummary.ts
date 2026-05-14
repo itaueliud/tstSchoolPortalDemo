@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState } from 'react'
 import { requestJson } from './apiClient'
 import type { UserRole } from './auth'

@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'

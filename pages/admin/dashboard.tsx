@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
@@ -225,10 +227,12 @@ export default function AdminDashboard(){
       setManagementError('')
 
       try {
-        const [usersResponse, feesResponse, paymentsResponse] = await Promise.all([
+        const [usersResponse, feesResponse, paymentsResponse, classesResponse, studentsResponse] = await Promise.all([
           requestJson<{ users: ManagedUser[]; total_pages: number }>('/api/dashboard/admin/users/?page=%s&page_size=8'.replace('%s', String(userPage))),
           requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>('/api/dashboard/admin/fees/?page=%s&page_size=6'.replace('%s', String(feePage))),
           requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/dashboard/fees/payments/?page=1&page_size=8'),
+          requestJson<{ classes: ClassOption[] }>('/api/dashboard/admin/classes/list/').catch(() => ({ classes: [] })),
+          requestJson<{ students: StudentOption[] }>('/api/dashboard/admin/students/').catch(() => ({ students: [] })),
         ])
 
         if (!active) return
@@ -236,6 +240,8 @@ export default function AdminDashboard(){
         setManagedFees(feesResponse.fees)
         setManagedPayments(paymentsResponse.payments || [])
         setFeeStudents(feesResponse.students)
+        setAvailableClasses(classesResponse.classes || [])
+        setAvailableStudents(studentsResponse.students || [])
         setUserTotalPages(usersResponse.total_pages || 1)
         setFeeTotalPages(feesResponse.total_pages || 1)
       } catch (managementLoadError) {

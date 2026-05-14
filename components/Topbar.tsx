@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState } from 'react'
 import { useTheme } from '../src/theme'
 import { Bell, LogOut } from 'lucide-react'
