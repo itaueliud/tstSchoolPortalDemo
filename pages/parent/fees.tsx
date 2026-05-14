@@ -64,7 +64,7 @@ export default function ParentFeesPage() {
     setError('')
 
     try {
-      const response = await requestJson<FeeResponse>('/api/fees/statements/?page=1&page_size=20')
+      const response = await requestJson<FeeResponse>('/api/dashboard/fees/statements/?page=1&page_size=20')
       setStatements(response.statements || [])
       setPayments(response.payments || [])
       setSummary(response.summary || {})
@@ -108,7 +108,7 @@ export default function ParentFeesPage() {
         payload.amount = Number(amount)
       }
 
-      await requestJson('/api/fees/payments/', {
+      await requestJson('/api/dashboard/fees/payments/', {
         method: 'POST',
         body: JSON.stringify(payload),
       })
@@ -127,13 +127,13 @@ export default function ParentFeesPage() {
   const handleDownloadReceipt = async (paymentId: string) => {
     setDownloadError('')
     try {
-      const blob = await requestBlob(`/api/fees/payments/${paymentId}/receipt/`)
+      const blob = await requestBlob(`/api/dashboard/fees/payments/${paymentId}/receipt/`)
       const objectUrl = URL.createObjectURL(blob)
       window.open(objectUrl, '_blank', 'noopener,noreferrer')?.focus()
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60000)
     } catch (receiptError) {
       setDownloadError(receiptError instanceof Error ? receiptError.message : 'Unable to open receipt')
-      window.open(`${API_BASE_URL}/api/fees/payments/${paymentId}/receipt/`, '_blank', 'noopener,noreferrer')
+      window.open(`${API_BASE_URL}/api/dashboard/fees/payments/${paymentId}/receipt/`, '_blank', 'noopener,noreferrer')
     }
   }
 
@@ -309,3 +309,4 @@ export default function ParentFeesPage() {
     </Layout>
   )
 }
+

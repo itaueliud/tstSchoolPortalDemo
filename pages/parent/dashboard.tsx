@@ -91,7 +91,7 @@ export default function ParentDashboard(){
       setFeesError('')
 
       try {
-        const response = await requestJson<{ statements: FeeStatement[]; payments: FeePayment[] }>('/api/fees/statements/?page=1&page_size=8')
+        const response = await requestJson<{ statements: FeeStatement[]; payments: FeePayment[] }>('/api/dashboard/fees/statements/?page=1&page_size=8')
         if (!active) return
         setStatements(response.statements || [])
         setPayments(response.payments || [])
@@ -276,3 +276,4 @@ export default function ParentDashboard(){
     </Layout>
   )
 }
+

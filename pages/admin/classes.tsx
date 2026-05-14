@@ -55,7 +55,7 @@ export default function AdminClassesPage() {
         const query = new URLSearchParams({ page: String(page), page_size: '8' })
         if (search.trim()) query.set('search', search.trim())
 
-        const response = await requestJson<{ classes: SchoolClassItem[]; total_pages: number }>(`/api/admin/classes/?${query.toString()}`)
+        const response = await requestJson<{ classes: SchoolClassItem[]; total_pages: number }>(`/api/dashboard/admin/classes/?${query.toString()}`)
         if (!active) return
         setClasses(response.classes)
         setTotalPages(response.total_pages || 1)
@@ -81,7 +81,7 @@ export default function AdminClassesPage() {
     const query = new URLSearchParams({ page: String(page), page_size: '8' })
     if (search.trim()) query.set('search', search.trim())
 
-    const response = await requestJson<{ classes: SchoolClassItem[]; total_pages: number }>(`/api/admin/classes/?${query.toString()}`)
+    const response = await requestJson<{ classes: SchoolClassItem[]; total_pages: number }>(`/api/dashboard/admin/classes/?${query.toString()}`)
     setClasses(response.classes)
     setTotalPages(response.total_pages || 1)
   }
@@ -118,10 +118,10 @@ export default function AdminClassesPage() {
       }
 
       if (editingId) {
-        await requestJson(`/api/admin/classes/${editingId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+        await requestJson(`/api/dashboard/admin/classes/${editingId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
         setNotice('Class updated successfully.')
       } else {
-        await requestJson('/api/admin/classes/', { method: 'POST', body: JSON.stringify(payload) })
+        await requestJson('/api/dashboard/admin/classes/', { method: 'POST', body: JSON.stringify(payload) })
         setNotice('Class created successfully.')
       }
 
@@ -134,7 +134,7 @@ export default function AdminClassesPage() {
 
   const handleDelete = async (classId: string) => {
     if (!window.confirm('Delete this class? Students or teacher assignments must be cleared first.')) return
-    await requestJson(`/api/admin/classes/${classId}/`, { method: 'DELETE' })
+    await requestJson(`/api/dashboard/admin/classes/${classId}/`, { method: 'DELETE' })
     await refreshClasses()
     if (editingId === classId) {
       resetForm()

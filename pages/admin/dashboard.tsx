@@ -219,9 +219,9 @@ export default function AdminDashboard(){
 
       try {
         const [usersResponse, feesResponse, paymentsResponse] = await Promise.all([
-          requestJson<{ users: ManagedUser[]; total_pages: number }>('/api/admin/users/?page=%s&page_size=8'.replace('%s', String(userPage))),
-          requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>('/api/admin/fees/?page=%s&page_size=6'.replace('%s', String(feePage))),
-          requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/fees/payments/?page=1&page_size=8'),
+          requestJson<{ users: ManagedUser[]; total_pages: number }>('/api/dashboard/admin/users/?page=%s&page_size=8'.replace('%s', String(userPage))),
+          requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>('/api/dashboard/admin/fees/?page=%s&page_size=6'.replace('%s', String(feePage))),
+          requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/dashboard/fees/payments/?page=1&page_size=8'),
         ])
 
         if (!active) return
@@ -254,7 +254,7 @@ export default function AdminDashboard(){
 
     const loadActivity = async () => {
       try {
-        const response = await requestJson<{ items: AdminActivity[]; total_pages: number }>(`/api/admin/activity/?page=${auditPage}&page_size=5`)
+        const response = await requestJson<{ items: AdminActivity[]; total_pages: number }>(`/api/dashboard/admin/activity/?page=${auditPage}&page_size=5`)
         if (!active) return
         setAuditLogs(response.items)
         setAuditTotalPages(response.total_pages || 1)
@@ -274,11 +274,11 @@ export default function AdminDashboard(){
 
   const refreshManagementData = async () => {
     const [usersResponse, feesResponse, paymentsResponse, classesResponse, studentsResponse] = await Promise.all([
-      requestJson<{ users: ManagedUser[]; total_pages: number }>(`/api/admin/users/?page=${userPage}&page_size=8`),
-      requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>(`/api/admin/fees/?page=${feePage}&page_size=6`),
-      requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/fees/payments/?page=1&page_size=8'),
-      requestJson<{ classes: ClassOption[] }>('/api/admin/classes/list/').catch(() => ({ classes: [] })),
-      requestJson<{ students: StudentOption[] }>('/api/admin/students/').catch(() => ({ students: [] })),
+      requestJson<{ users: ManagedUser[]; total_pages: number }>(`/api/dashboard/admin/users/?page=${userPage}&page_size=8`),
+      requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>(`/api/dashboard/admin/fees/?page=${feePage}&page_size=6`),
+      requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/dashboard/fees/payments/?page=1&page_size=8'),
+      requestJson<{ classes: ClassOption[] }>('/api/dashboard/admin/classes/list/').catch(() => ({ classes: [] })),
+      requestJson<{ students: StudentOption[] }>('/api/dashboard/admin/students/').catch(() => ({ students: [] })),
     ])
 
     setManagedUsers(usersResponse.users)
@@ -295,7 +295,7 @@ export default function AdminDashboard(){
     if (!fee.reference) return
 
     try {
-      await requestJson('/api/fees/payments/', {
+      await requestJson('/api/dashboard/fees/payments/', {
         method: 'POST',
         body: JSON.stringify({
           reference: fee.reference,
@@ -378,9 +378,9 @@ export default function AdminDashboard(){
       }
 
       if (editingUserId) {
-        await requestJson(`/api/admin/users/${editingUserId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+        await requestJson(`/api/dashboard/admin/users/${editingUserId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
       } else {
-        await requestJson('/api/admin/users/', { method: 'POST', body: JSON.stringify(payload) })
+        await requestJson('/api/dashboard/admin/users/', { method: 'POST', body: JSON.stringify(payload) })
       }
 
       await refreshManagementData()
@@ -392,7 +392,7 @@ export default function AdminDashboard(){
 
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Delete this user?')) return
-    await requestJson(`/api/admin/users/${userId}/`, { method: 'DELETE' })
+    await requestJson(`/api/dashboard/admin/users/${userId}/`, { method: 'DELETE' })
     await refreshManagementData()
     if (editingUserId === userId) {
       resetUserForm()
@@ -421,9 +421,9 @@ export default function AdminDashboard(){
       }
 
       if (editingFeeId) {
-        await requestJson(`/api/admin/fees/${editingFeeId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
+        await requestJson(`/api/dashboard/admin/fees/${editingFeeId}/`, { method: 'PATCH', body: JSON.stringify(payload) })
       } else {
-        await requestJson('/api/admin/fees/', { method: 'POST', body: JSON.stringify(payload) })
+        await requestJson('/api/dashboard/admin/fees/', { method: 'POST', body: JSON.stringify(payload) })
       }
 
       await refreshManagementData()
@@ -435,7 +435,7 @@ export default function AdminDashboard(){
 
   const handleDeleteFee = async (feeId: string) => {
     if (!window.confirm('Delete this fee invoice?')) return
-    await requestJson(`/api/admin/fees/${feeId}/`, { method: 'DELETE' })
+    await requestJson(`/api/dashboard/admin/fees/${feeId}/`, { method: 'DELETE' })
     await refreshManagementData()
     if (editingFeeId === feeId) {
       resetFeeForm()
@@ -888,3 +888,4 @@ export default function AdminDashboard(){
     </Layout>
   )
 }
+
