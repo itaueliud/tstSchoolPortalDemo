@@ -73,7 +73,12 @@ export default function ParentCommunicationPage() {
   const communication = (summaryValues.communication || {}) as ParentCommunication
   const office = communication.office || {}
   const parentContact = communication.parent || {}
-  const activeChildContact = communication.active_child || activeChild || {}
+  const activeChildContact = (communication.active_child || activeChild || {}) as {
+    name?: string
+    admission_number?: string
+    class_teacher?: string
+    primary_contact?: string
+  }
   const notes = communication.notes || []
 
   return (

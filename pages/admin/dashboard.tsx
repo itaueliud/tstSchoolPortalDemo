@@ -322,6 +322,7 @@ export default function AdminDashboard(){
     if (!user.id) return
     setEditingUserId(user.id)
     setUserForm({
+      ...emptyUserForm,
       username: user.username || '',
       email: user.email,
       password: '',
