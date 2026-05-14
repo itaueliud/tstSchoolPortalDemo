@@ -68,19 +68,27 @@ class DashboardSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, role: str):
-        role = role.lower()
-        self._requested_child_id = request.query_params.get('child_id', '').strip() if role == 'parent' else ''
-        payload = {
-            'role': role,
-            'summary': self._summary_for_role(role, request.user),
-            'announcements': list(
-                Announcement.objects(is_active=True)
-                .only('id', 'title', 'body', 'audience', 'published_at')
-                .limit(5)
-                .as_pymongo()
-            ),
-        }
-        return Response(payload)
+        try:
+            role = role.lower()
+            self._requested_child_id = request.query_params.get('child_id', '').strip() if role == 'parent' else ''
+            payload = {
+                'role': role,
+                'summary': self._summary_for_role(role, request.user),
+                'announcements': list(
+                    Announcement.objects(is_active=True)
+                    .only('id', 'title', 'body', 'audience', 'published_at')
+                    .limit(5)
+                    .as_pymongo()
+                ),
+            }
+            return Response(payload)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading dashboard summary.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _summary_for_role(self, role: str, user: SchoolUser):
         if role == 'admin':
@@ -91,7 +99,7 @@ class DashboardSummaryView(APIView):
             fee_total = 0
             try:
                 invoices = FeeInvoice.objects()
-                fee_total = sum(float(inv.paid_amount) for inv in invoices) or 1590800
+                fee_total = sum(float(inv.paid_amount or 0) for inv in invoices) or 1590800
             except Exception:
                 fee_total = 1590800
             
