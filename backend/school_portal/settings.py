@@ -73,7 +73,13 @@ MONGO_URI = os.environ.get(
     'MONGO_URI',
     'mongodb://school_portal_user:school_portal_password@localhost:27017/school_portal?authSource=admin'
 )
-me.connect(host=MONGO_URI)
+
+# Connect to MongoDB with proper error handling
+try:
+    me.connect(host=MONGO_URI)
+except Exception as e:
+    print(f"Warning: MongoDB connection failed at startup: {e}")
+    # Connection will be retried on first request
 
 DATABASES = {
     'default': {

@@ -126,18 +126,6 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="relative z-10">
-          <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 border border-white/20">
-            <h3 className="text-white font-semibold mb-3">Demo Credentials</h3>
-            <div className="space-y-2 text-sm text-white/80">
-              <p><span className="font-medium">Student:</span> ADM001 / password123</p>
-              <p><span className="font-medium">Parent:</span> PARENT001 / password123</p>
-              <p><span className="font-medium">Teacher:</span> TEACHER001 / password123</p>
-              <p><span className="font-medium">Admin:</span> ADMIN001 / password123</p>
-            </div>
-          </div>
-        </div>
-
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-white/10 clip-path-wave"></div>
       </div>
 

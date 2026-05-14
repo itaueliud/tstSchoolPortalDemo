@@ -191,59 +191,80 @@ class AdminOverviewView(APIView):
         if getattr(request.user, 'role', None) != 'admin':
             return Response({'detail': 'Only admins can access overview data.'}, status=status.HTTP_403_FORBIDDEN)
 
-        students = list(StudentProfile.objects.order_by('admission_number'))
-        teachers = list(TeacherProfile.objects.order_by('subject'))
-        classes = list(SchoolClass.objects.order_by('name'))
-        invoices = list(FeeInvoice.objects.order_by('-due_date').limit(12))
-        announcements = list(
-            Announcement.objects(is_active=True)
-            .only('id', 'title', 'body', 'audience', 'published_at')
-            .order_by('-published_at')
-            .limit(5)
-            .as_pymongo()
-        )
+        try:
+            students = list(StudentProfile.objects.order_by('admission_number'))
+            teachers = list(TeacherProfile.objects.order_by('subject'))
+            classes = list(SchoolClass.objects.order_by('name'))
+            invoices = list(FeeInvoice.objects.order_by('-due_date').limit(12))
+            announcements = list(
+                Announcement.objects(is_active=True)
+                .only('id', 'title', 'body', 'audience', 'published_at')
+                .order_by('-published_at')
+                .limit(5)
+                .as_pymongo()
+            )
 
-        report_items = self._report_items()
-        analytics = self._analytics()
-        lms_analytics = self._lms_analytics()
+            report_items = self._report_items()
+            analytics = self._analytics()
+            lms_analytics = self._lms_analytics()
 
-        total_paid = sum(float(invoice.paid_amount) for invoice in invoices)
-        pending_balance = sum(max(float(invoice.amount) - float(invoice.paid_amount), 0) for invoice in invoices)
+            # Safe aggregations with null checks
+            total_paid = sum(float(invoice.paid_amount or 0) for invoice in invoices)
+            pending_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in invoices)
 
-        return Response({
-            'summary': {
-                'students': len(students),
-                'teachers': len(teachers),
-                'classes': len(classes),
-                'revenue': f'{total_paid:,.0f}',
-                'pending_balance': f'{pending_balance:,.0f}',
-            },
-            'analytics': analytics,
-            'lms_analytics': lms_analytics,
-            'users': [
-                {
-                    'id': str(user.id),
-                    'name': user.full_display_name,
-                    'role': user.role.title(),
-                    'email': user.email,
-                    'status': 'Active' if user.is_active else 'Inactive',
-                }
-                for user in self._admin_users(students, teachers)
-            ],
-            'fees': [
-                {
-                    'reference': invoice.reference,
-                    'student': invoice.student_id.admission_number,
-                    'class': invoice.student_id.current_class.name if invoice.student_id.current_class else 'N/A',
-                    'amount': f'{float(invoice.amount):,.0f}',
-                    'paid': f'{float(invoice.paid_amount):,.0f}',
-                    'status': invoice.status.title(),
-                }
-                for invoice in invoices[:10]
-            ],
-            'reports': report_items,
-            'announcements': announcements,
-        })
+            # Build fees list with safe attribute access
+            fees_list = []
+            for invoice in invoices[:10]:
+                try:
+                    student = invoice.student_id
+                    if student:
+                        class_name = student.current_class.name if student.current_class else 'N/A'
+                    else:
+                        class_name = 'N/A'
+                    
+                    fees_list.append({
+                        'reference': invoice.reference,
+                        'student': student.admission_number if student else 'Unknown',
+                        'class': class_name,
+                        'amount': f'{float(invoice.amount or 0):,.0f}',
+                        'paid': f'{float(invoice.paid_amount or 0):,.0f}',
+                        'status': invoice.status.title() if invoice.status else 'Unknown',
+                    })
+                except Exception as e:
+                    # Skip malformed invoices
+                    continue
+
+            return Response({
+                'summary': {
+                    'students': len(students),
+                    'teachers': len(teachers),
+                    'classes': len(classes),
+                    'revenue': f'{total_paid:,.0f}',
+                    'pending_balance': f'{pending_balance:,.0f}',
+                },
+                'analytics': analytics,
+                'lms_analytics': lms_analytics,
+                'users': [
+                    {
+                        'id': str(user.id),
+                        'name': user.full_display_name,
+                        'role': user.role.title(),
+                        'email': user.email,
+                        'status': 'Active' if user.is_active else 'Inactive',
+                    }
+                    for user in self._admin_users(students, teachers)
+                ],
+                'fees': fees_list,
+                'reports': report_items,
+                'announcements': announcements,
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading admin overview data.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _admin_users(self, students, teachers):
         combined = []
@@ -357,33 +378,41 @@ class AdminActivityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        blocked = self._require_admin(request)
-        if blocked:
-            return blocked
+        try:
+            blocked = self._require_admin(request)
+            if blocked:
+                return blocked
 
-        page, page_size = self._pagination(request)
-        queryset = AdminAuditLog.objects.order_by('-created_at')
-        total = queryset.count()
-        items = list(queryset.skip((page - 1) * page_size).limit(page_size))
+            page, page_size = self._pagination(request)
+            queryset = AdminAuditLog.objects.order_by('-created_at')
+            total = queryset.count()
+            items = list(queryset.skip((page - 1) * page_size).limit(page_size))
 
-        return Response({
-            'items': [
-                {
-                    'id': str(item.id),
-                    'action': item.action,
-                    'entity_type': item.entity_type,
-                    'entity_id': item.entity_id,
-                    'actor_username': item.actor_username,
-                    'details': item.details,
-                    'created_at': item.created_at.isoformat() if item.created_at else '',
-                }
-                for item in items
-            ],
-            'page': page,
-            'page_size': page_size,
-            'total': total,
-            'total_pages': max((total + page_size - 1) // page_size, 1),
-        })
+            return Response({
+                'items': [
+                    {
+                        'id': str(item.id),
+                        'action': item.action,
+                        'entity_type': item.entity_type,
+                        'entity_id': item.entity_id,
+                        'actor_username': item.actor_username,
+                        'details': item.details,
+                        'created_at': item.created_at.isoformat() if item.created_at else '',
+                    }
+                    for item in items
+                ],
+                'page': page,
+                'page_size': page_size,
+                'total': total,
+                'total_pages': max((total + page_size - 1) // page_size, 1),
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading activity logs.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _pagination(self, request):
         try:
@@ -900,14 +929,22 @@ class AdminUserCollectionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        blocked = self._require_admin(request)
-        if blocked:
-            return blocked
-        page, page_size = self._pagination(request)
-        queryset = SchoolUser.objects.order_by('role', 'username')
-        total = queryset.count()
-        users = [self._serialize_user(user) for user in queryset.skip((page - 1) * page_size).limit(page_size)]
-        return Response({'users': users, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        try:
+            blocked = self._require_admin(request)
+            if blocked:
+                return blocked
+            page, page_size = self._pagination(request)
+            queryset = SchoolUser.objects.order_by('role', 'username')
+            total = queryset.count()
+            users = [self._serialize_user(user) for user in queryset.skip((page - 1) * page_size).limit(page_size)]
+            return Response({'users': users, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading users.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
         blocked = self._require_admin(request)
@@ -1100,15 +1137,23 @@ class AdminFeeCollectionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        blocked = self._require_admin(request)
-        if blocked:
-            return blocked
-        page, page_size = self._pagination(request)
-        queryset = FeeInvoice.objects.order_by('-due_date', '-id')
-        total = queryset.count()
-        fees = [self._serialize_fee(invoice) for invoice in queryset.skip((page - 1) * page_size).limit(page_size)]
-        students = [self._serialize_student(student) for student in StudentProfile.objects.order_by('admission_number')]
-        return Response({'fees': fees, 'students': students, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        try:
+            blocked = self._require_admin(request)
+            if blocked:
+                return blocked
+            page, page_size = self._pagination(request)
+            queryset = FeeInvoice.objects.order_by('-due_date', '-id')
+            total = queryset.count()
+            fees = [self._serialize_fee(invoice) for invoice in queryset.skip((page - 1) * page_size).limit(page_size)]
+            students = [self._serialize_student(student) for student in StudentProfile.objects.order_by('admission_number')]
+            return Response({'fees': fees, 'students': students, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading fees.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
         blocked = self._require_admin(request)
@@ -1168,43 +1213,92 @@ class AdminFeeCollectionView(APIView):
         return None
 
     def _serialize_student(self, student: StudentProfile):
-        return {
-            'id': str(student.id),
-            'admission_number': student.admission_number,
-            'name': str(student),
-            'class_name': student.current_class.name if student.current_class else 'N/A',
-        }
+        try:
+            return {
+                'id': str(student.id),
+                'admission_number': student.admission_number,
+                'name': str(student),
+                'class_name': student.current_class.name if student.current_class else 'N/A',
+            }
+        except Exception:
+            return {
+                'id': str(student.id) if student else 'Unknown',
+                'admission_number': student.admission_number if student else 'Unknown',
+                'name': str(student) if student else 'Unknown',
+                'class_name': 'N/A',
+            }
 
     def _serialize_fee(self, invoice: FeeInvoice):
-        payment_count = FeePayment.objects(invoice=invoice).count()
-        latest_payment = FeePayment.objects(invoice=invoice).order_by('-initiated_at').first()
-        phone_number = ''
         try:
-            user = SchoolUser.objects.get(id=invoice.student_id.user_id)
-            phone_number = user.phone_number or ''
-        except Exception:
+            payment_count = FeePayment.objects(invoice=invoice).count()
+            latest_payment = FeePayment.objects(invoice=invoice).order_by('-initiated_at').first()
             phone_number = ''
+            
+            student = invoice.student_id
+            if not student:
+                return {
+                    'id': str(invoice.id),
+                    'reference': invoice.reference,
+                    'student_id': 'Unknown',
+                    'student': 'Unknown',
+                    'class': 'N/A',
+                    'amount': '0',
+                    'paid_amount': '0',
+                    'status': invoice.status.title() if invoice.status else 'Unknown',
+                    'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
+                    'phone_number': '',
+                    'outstanding_amount': '0',
+                    'payment_count': 0,
+                    'latest_payment_status': '',
+                }
+            
+            try:
+                user = SchoolUser.objects.get(id=student.user_id)
+                phone_number = user.phone_number or ''
+            except Exception:
+                phone_number = ''
 
-        return {
-            'id': str(invoice.id),
-            'reference': invoice.reference,
-            'student_id': str(invoice.student_id.id),
-            'student': invoice.student_id.admission_number,
-            'class': invoice.student_id.current_class.name if invoice.student_id.current_class else 'N/A',
-            'amount': f'{float(invoice.amount):,.0f}',
-            'paid_amount': f'{float(invoice.paid_amount):,.0f}',
-            'status': invoice.status.title(),
-            'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
-            'phone_number': phone_number,
-            'outstanding_amount': f'{max(float(invoice.amount) - float(invoice.paid_amount), 0):,.0f}',
-            'payment_count': payment_count,
-            'latest_payment_status': latest_payment.status.title() if latest_payment else '',
-        }
+            return {
+                'id': str(invoice.id),
+                'reference': invoice.reference,
+                'student_id': str(student.id),
+                'student': student.admission_number,
+                'class': student.current_class.name if student.current_class else 'N/A',
+                'amount': f'{float(invoice.amount or 0):,.0f}',
+                'paid_amount': f'{float(invoice.paid_amount or 0):,.0f}',
+                'status': invoice.status.title() if invoice.status else 'Unknown',
+                'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
+                'phone_number': phone_number,
+                'outstanding_amount': f'{max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0):,.0f}',
+                'payment_count': payment_count,
+                'latest_payment_status': latest_payment.status.title() if latest_payment else '',
+            }
+        except Exception as e:
+            return {
+                'id': str(invoice.id),
+                'reference': invoice.reference,
+                'student_id': 'Error',
+                'student': 'Error',
+                'class': 'Error',
+                'amount': '0',
+                'paid_amount': '0',
+                'status': 'Error',
+                'due_date': '',
+                'phone_number': '',
+                'outstanding_amount': '0',
+                'payment_count': 0,
+                'latest_payment_status': '',
+                'error': str(e),
+            }
 
     def _sync_fee_balance(self, student: StudentProfile):
-        invoices = FeeInvoice.objects(student_id=student)
-        student.fee_balance = sum(max(float(inv.amount) - float(inv.paid_amount), 0) for inv in invoices)
-        student.save()
+        try:
+            invoices = FeeInvoice.objects(student_id=student)
+            student.fee_balance = sum(max(float(inv.amount or 0) - float(inv.paid_amount or 0), 0) for inv in invoices)
+            student.save()
+        except Exception:
+            # Silently fail, don't let this break the main flow
+            pass
 
     def _require_admin(self, request):
         if getattr(request.user, 'role', None) != 'admin':
@@ -2484,43 +2578,78 @@ def _sync_fee_invoice_totals(invoice: FeeInvoice):
 
 
 def _serialize_fee_payment(payment: FeePayment):
-    return {
-        'id': str(payment.id),
-        'invoice_id': str(payment.invoice.id),
-        'invoice_reference': payment.invoice.reference,
-        'student_id': str(payment.student_id.id),
-        'student': payment.student_id.admission_number,
-        'payment_method': payment.payment_method,
-        'phone_number': payment.phone_number,
-        'amount': f'{float(payment.amount):,.0f}',
-        'status': payment.status,
-        'checkout_request_id': payment.checkout_request_id or '',
-        'merchant_request_id': payment.merchant_request_id or '',
-        'mpesa_receipt_number': payment.mpesa_receipt_number or '',
-        'result_code': payment.result_code or '',
-        'result_description': payment.result_description or '',
-        'initiated_at': payment.initiated_at.isoformat() if payment.initiated_at else '',
-        'completed_at': payment.completed_at.isoformat() if payment.completed_at else '',
-        'raw_payload': payment.raw_payload or {},
-    }
+    try:
+        return {
+            'id': str(payment.id),
+            'invoice_id': str(payment.invoice.id) if payment.invoice else 'Unknown',
+            'invoice_reference': payment.invoice.reference if payment.invoice else 'Unknown',
+            'student_id': str(payment.student_id.id) if payment.student_id else 'Unknown',
+            'student': payment.student_id.admission_number if payment.student_id else 'Unknown',
+            'payment_method': payment.payment_method,
+            'phone_number': payment.phone_number,
+            'amount': f'{float(payment.amount or 0):,.0f}',
+            'status': payment.status,
+            'checkout_request_id': payment.checkout_request_id or '',
+            'merchant_request_id': payment.merchant_request_id or '',
+            'mpesa_receipt_number': payment.mpesa_receipt_number or '',
+            'result_code': payment.result_code or '',
+            'result_description': payment.result_description or '',
+            'initiated_at': payment.initiated_at.isoformat() if payment.initiated_at else '',
+            'completed_at': payment.completed_at.isoformat() if payment.completed_at else '',
+            'raw_payload': payment.raw_payload or {},
+        }
+    except Exception as e:
+        # Return a minimal response if serialization fails
+        return {
+            'id': str(payment.id),
+            'invoice_id': 'Error',
+            'invoice_reference': 'Error',
+            'student_id': 'Error',
+            'student': 'Error',
+            'payment_method': payment.payment_method,
+            'phone_number': payment.phone_number,
+            'amount': '0',
+            'status': payment.status,
+            'error': str(e),
+        }
 
 
 def _serialize_fee_invoice_statement(invoice: FeeInvoice):
-    payments = list(FeePayment.objects(invoice=invoice).order_by('-initiated_at'))
-    return {
-        'id': str(invoice.id),
-        'reference': invoice.reference,
-        'student_id': str(invoice.student_id.id),
-        'student': invoice.student_id.admission_number,
-        'student_name': invoice.student_id.full_display_name,
-        'class': invoice.student_id.current_class.name if invoice.student_id.current_class else 'N/A',
-        'amount': float(invoice.amount),
-        'paid_amount': float(invoice.paid_amount),
-        'outstanding_amount': max(float(invoice.amount) - float(invoice.paid_amount), 0),
-        'status': invoice.status,
-        'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
-        'payments': [_serialize_fee_payment(payment) for payment in payments],
-    }
+    try:
+        payments = list(FeePayment.objects(invoice=invoice).order_by('-initiated_at'))
+        student = invoice.student_id
+        
+        return {
+            'id': str(invoice.id),
+            'reference': invoice.reference,
+            'student_id': str(student.id) if student else 'Unknown',
+            'student': student.admission_number if student else 'Unknown',
+            'student_name': student.full_display_name if student else 'Unknown',
+            'class': student.current_class.name if student and student.current_class else 'N/A',
+            'amount': float(invoice.amount or 0),
+            'paid_amount': float(invoice.paid_amount or 0),
+            'outstanding_amount': max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0),
+            'status': invoice.status,
+            'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
+            'payments': [_serialize_fee_payment(payment) for payment in payments],
+        }
+    except Exception as e:
+        # Return a minimal response if serialization fails
+        return {
+            'id': str(invoice.id),
+            'reference': invoice.reference,
+            'student_id': 'Error',
+            'student': 'Error',
+            'student_name': 'Error',
+            'class': 'Error',
+            'amount': 0,
+            'paid_amount': 0,
+            'outstanding_amount': 0,
+            'status': invoice.status,
+            'due_date': '',
+            'payments': [],
+            'error': str(e),
+        }
 
 
 def _receipt_filename(payment: FeePayment):
@@ -2602,27 +2731,35 @@ class FeePaymentCollectionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        role = _user_role(request.user)
-        page, page_size = _pagination(request)
-        queryset = FeePayment.objects.order_by('-initiated_at')
+        try:
+            role = _user_role(request.user)
+            page, page_size = _pagination(request)
+            queryset = FeePayment.objects.order_by('-initiated_at')
 
-        if role == 'student':
-            student = _student_profile(request.user)
-            if not student:
-                return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
-            queryset = queryset(student_id=student)
-        elif role == 'parent':
-            parent = _parent_profile(request.user)
-            if not parent:
-                return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
-            child_ids = [child.id for child in parent.children_ids if child is not None]
-            queryset = queryset(student_id__in=child_ids)
-        elif role != 'admin':
-            return Response({'detail': 'Role cannot access fee payments.'}, status=status.HTTP_403_FORBIDDEN)
+            if role == 'student':
+                student = _student_profile(request.user)
+                if not student:
+                    return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+                queryset = queryset(student_id=student)
+            elif role == 'parent':
+                parent = _parent_profile(request.user)
+                if not parent:
+                    return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+                child_ids = [child.id for child in parent.children_ids if child is not None]
+                queryset = queryset(student_id__in=child_ids)
+            elif role != 'admin':
+                return Response({'detail': 'Role cannot access fee payments.'}, status=status.HTTP_403_FORBIDDEN)
 
-        total = queryset.count()
-        payments = [_serialize_fee_payment(payment) for payment in queryset.skip((page - 1) * page_size).limit(page_size)]
-        return Response({'payments': payments, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+            total = queryset.count()
+            payments = [_serialize_fee_payment(payment) for payment in queryset.skip((page - 1) * page_size).limit(page_size)]
+            return Response({'payments': payments, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading fee payments.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
         role = _user_role(request.user)
@@ -2659,6 +2796,9 @@ class FeePaymentCollectionView(APIView):
             return Response({'detail': 'Fee invoice not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         student = invoice.student_id
+        if not student:
+            return Response({'detail': 'Invoice student reference is invalid.'}, status=status.HTTP_400_BAD_REQUEST)
+            
         if role == 'student':
             current_student = _student_profile(request.user)
             if not current_student or str(current_student.id) != str(student.id):
@@ -2669,8 +2809,9 @@ class FeePaymentCollectionView(APIView):
             if str(student.id) not in child_ids:
                 return Response({'detail': 'You can only pay invoices for your children.'}, status=status.HTTP_403_FORBIDDEN)
 
-        amount_due = max(float(invoice.amount) - float(invoice.paid_amount), 0)
-        amount = float(data.get('amount') or amount_due or invoice.amount)
+        # Safe calculation with null checks
+        amount_due = max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0)
+        amount = float(data.get('amount') or amount_due or invoice.amount or 0)
         if amount <= 0:
             return Response({'detail': 'Invoice does not have an outstanding amount.'}, status=status.HTTP_400_BAD_REQUEST)
         if amount > amount_due and amount_due > 0:
@@ -2741,53 +2882,62 @@ class FeeStatementView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        role = _user_role(request.user)
-        page, page_size = _pagination(request)
+        try:
+            role = _user_role(request.user)
+            page, page_size = _pagination(request)
 
-        invoices = []
-        student_ids = []
+            invoices = []
+            student_ids = []
 
-        if role == 'student':
-            student = _student_profile(request.user)
-            if not student:
-                return Response({'statements': [], 'payments': [], 'summary': {}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
-            student_ids = [student.id]
-        elif role == 'parent':
-            parent = _parent_profile(request.user)
-            if not parent:
-                return Response({'statements': [], 'payments': [], 'summary': {}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
-            student_ids = [child.id for child in parent.children_ids if child is not None]
-        elif role == 'admin':
-            student_ids = [student.id for student in StudentProfile.objects]
-        else:
-            return Response({'detail': 'Role cannot access fee statements.'}, status=status.HTTP_403_FORBIDDEN)
+            if role == 'student':
+                student = _student_profile(request.user)
+                if not student:
+                    return Response({'statements': [], 'payments': [], 'summary': {}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+                student_ids = [student.id]
+            elif role == 'parent':
+                parent = _parent_profile(request.user)
+                if not parent:
+                    return Response({'statements': [], 'payments': [], 'summary': {}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+                student_ids = [child.id for child in parent.children_ids if child is not None]
+            elif role == 'admin':
+                student_ids = [student.id for student in StudentProfile.objects]
+            else:
+                return Response({'detail': 'Role cannot access fee statements.'}, status=status.HTTP_403_FORBIDDEN)
 
-        if not student_ids:
-            return Response({'statements': [], 'payments': [], 'summary': {'invoiced': 0, 'paid': 0, 'outstanding': 0}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+            if not student_ids:
+                return Response({'statements': [], 'payments': [], 'summary': {'invoiced': 0, 'paid': 0, 'outstanding': 0}, 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
 
-        invoices = list(FeeInvoice.objects(student_id__in=student_ids).order_by('-due_date', '-id'))
-        payments_query = FeePayment.objects(student_id__in=student_ids).order_by('-initiated_at')
-        total = len(invoices)
-        statement_rows = [_serialize_fee_invoice_statement(invoice) for invoice in invoices[(page - 1) * page_size: page * page_size]]
-        payment_rows = [_serialize_fee_payment(payment) for payment in list(payments_query.limit(12))]
+            invoices = list(FeeInvoice.objects(student_id__in=student_ids).order_by('-due_date', '-id'))
+            payments_query = FeePayment.objects(student_id__in=student_ids).order_by('-initiated_at')
+            total = len(invoices)
+            statement_rows = [_serialize_fee_invoice_statement(invoice) for invoice in invoices[(page - 1) * page_size: page * page_size]]
+            payment_rows = [_serialize_fee_payment(payment) for payment in list(payments_query.limit(12))]
 
-        invoiced_total = sum(float(invoice.amount) for invoice in invoices)
-        paid_total = sum(float(invoice.paid_amount) for invoice in invoices)
-        outstanding_total = sum(max(float(invoice.amount) - float(invoice.paid_amount), 0) for invoice in invoices)
+            # Safe aggregations with null checks
+            invoiced_total = sum(float(invoice.amount or 0) for invoice in invoices)
+            paid_total = sum(float(invoice.paid_amount or 0) for invoice in invoices)
+            outstanding_total = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in invoices)
 
-        return Response({
-            'statements': statement_rows,
-            'payments': payment_rows,
-            'summary': {
-                'invoiced': f'{invoiced_total:,.0f}',
-                'paid': f'{paid_total:,.0f}',
-                'outstanding': f'{outstanding_total:,.0f}',
-            },
-            'page': page,
-            'page_size': page_size,
-            'total': total,
-            'total_pages': max((total + page_size - 1) // page_size, 1),
-        })
+            return Response({
+                'statements': statement_rows,
+                'payments': payment_rows,
+                'summary': {
+                    'invoiced': f'{invoiced_total:,.0f}',
+                    'paid': f'{paid_total:,.0f}',
+                    'outstanding': f'{outstanding_total:,.0f}',
+                },
+                'page': page,
+                'page_size': page_size,
+                'total': total,
+                'total_pages': max((total + page_size - 1) // page_size, 1),
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'detail': 'Error loading fee statements.', 'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class FeePaymentReceiptPdfView(APIView):
