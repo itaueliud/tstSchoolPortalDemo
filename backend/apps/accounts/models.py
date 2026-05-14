@@ -38,6 +38,15 @@ class SchoolUser(me.Document):
         return check_password(raw_password, self.password)
 
     @property
+    def is_authenticated(self) -> bool:
+        # DRF/Django permission classes expect this attribute on request.user.
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+
+    @property
     def full_display_name(self) -> str:
         name = f"{self.first_name} {self.last_name}".strip()
         return name or self.username
