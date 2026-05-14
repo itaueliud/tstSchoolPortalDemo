@@ -74,11 +74,10 @@ class DashboardSummaryView(APIView):
             payload = {
                 'role': role,
                 'summary': self._summary_for_role(role, request.user),
-                'announcements': list(
+                'announcements': _serialize_announcements(
                     Announcement.objects(is_active=True)
                     .only('id', 'title', 'body', 'audience', 'published_at')
                     .limit(5)
-                    .as_pymongo()
                 ),
             }
             return Response(payload)
@@ -204,12 +203,11 @@ class AdminOverviewView(APIView):
             teachers = list(TeacherProfile.objects.order_by('subject'))
             classes = list(SchoolClass.objects.order_by('name'))
             invoices = list(FeeInvoice.objects.order_by('-due_date').limit(12))
-            announcements = list(
+            announcements = _serialize_announcements(
                 Announcement.objects(is_active=True)
                 .only('id', 'title', 'body', 'audience', 'published_at')
                 .order_by('-published_at')
                 .limit(5)
-                .as_pymongo()
             )
 
             report_items = self._report_items()
@@ -1506,6 +1504,22 @@ def _select_parent_child(children, requested_child_id: str):
         if str(child.id) == str(requested_child_id):
             return child
     return None
+
+
+def _serialize_announcements(queryset):
+    items = []
+    for item in queryset:
+        try:
+            items.append({
+                'id': str(item.id),
+                'title': item.title or '',
+                'body': item.body or '',
+                'audience': item.audience or 'all',
+                'published_at': item.published_at.isoformat() if item.published_at else '',
+            })
+        except Exception:
+            continue
+    return items
 
 
 def _serialize_parent_child(child: StudentProfile):

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTheme } from '../src/theme'
 import { Bell, LogOut } from 'lucide-react'
 import { useRouter } from 'next/router'
@@ -7,7 +7,12 @@ import { clearAuthSession, getAuthSession, type UserRole } from '../src/auth'
 export default function Topbar({ role }: { role: UserRole }){
   const { dark, toggle } = useTheme()
   const router = useRouter()
-  const session = getAuthSession()
+  const [session, setSession] = useState<ReturnType<typeof getAuthSession>>(null)
+
+  useEffect(() => {
+    setSession(getAuthSession())
+  }, [])
+
   const userName = session?.user
     ? `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim() || session.user.username
     : session?.username || `John ${role.charAt(0).toUpperCase() + role.slice(1)}`
