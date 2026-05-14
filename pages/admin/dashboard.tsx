@@ -108,6 +108,13 @@ const toDateTimeLocal = (value: string) => {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
+const formatUtcDateTime = (value: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+}
+
 export default function AdminDashboard(){
   const { data, loading, error } = useDashboardSummary('admin')
   const summary = data?.summary || {}
@@ -872,7 +879,7 @@ export default function AdminDashboard(){
                   <p className="text-sm font-semibold text-gray-900 capitalize">{entry.action} {entry.entity_type}</p>
                   <p className="text-xs text-gray-500">By {entry.actor_username} • {entry.entity_id}</p>
                 </div>
-                <span className="text-[11px] text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                <span className="text-[11px] text-gray-400">{formatUtcDateTime(entry.created_at)}</span>
               </div>
             </div>
           )) : <p className="text-sm text-gray-500">No recent admin activity.</p>}

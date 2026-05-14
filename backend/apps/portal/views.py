@@ -256,7 +256,7 @@ class AdminOverviewView(APIView):
                     {
                         'id': str(user.id),
                         'name': user.full_display_name,
-                        'role': user.role.title(),
+                        'role': str(user.role or 'unknown').title(),
                         'email': user.email,
                         'status': 'Active' if user.is_active else 'Inactive',
                     }
@@ -296,10 +296,18 @@ class AdminOverviewView(APIView):
             except SchoolUser.DoesNotExist:
                 continue
 
-        for user in SchoolUser.objects.order_by('role', 'username').limit(8):
-            if str(user.id) not in seen:
-                combined.append(user)
-                seen.add(str(user.id))
+        try:
+            users = SchoolUser.objects.order_by('role', 'username').limit(8)
+        except Exception:
+            users = []
+
+        for user in users:
+            try:
+                if str(user.id) not in seen:
+                    combined.append(user)
+                    seen.add(str(user.id))
+            except Exception:
+                continue
 
         return combined[:12]
 
@@ -944,7 +952,12 @@ class AdminUserCollectionView(APIView):
             page, page_size = self._pagination(request)
             queryset = SchoolUser.objects.order_by('role', 'username')
             total = queryset.count()
-            users = [self._serialize_user(user) for user in queryset.skip((page - 1) * page_size).limit(page_size)]
+            users = []
+            for user in queryset.skip((page - 1) * page_size).limit(page_size):
+                try:
+                    users.append(self._serialize_user(user))
+                except Exception:
+                    continue
             return Response({'users': users, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
         except Exception as e:
             import traceback
@@ -1152,8 +1165,18 @@ class AdminFeeCollectionView(APIView):
             page, page_size = self._pagination(request)
             queryset = FeeInvoice.objects.order_by('-due_date', '-id')
             total = queryset.count()
-            fees = [self._serialize_fee(invoice) for invoice in queryset.skip((page - 1) * page_size).limit(page_size)]
-            students = [self._serialize_student(student) for student in StudentProfile.objects.order_by('admission_number')]
+            fees = []
+            for invoice in queryset.skip((page - 1) * page_size).limit(page_size):
+                try:
+                    fees.append(self._serialize_fee(invoice))
+                except Exception:
+                    continue
+            students = []
+            for student in StudentProfile.objects.order_by('admission_number'):
+                try:
+                    students.append(self._serialize_student(student))
+                except Exception:
+                    continue
             return Response({'fees': fees, 'students': students, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
         except Exception as e:
             import traceback
@@ -2748,13 +2771,13 @@ class FeePaymentCollectionView(APIView):
                 student = _student_profile(request.user)
                 if not student:
                     return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
-                queryset = queryset(student_id=student)
+                queryset = queryset.filter(student_id=student)
             elif role == 'parent':
                 parent = _parent_profile(request.user)
                 if not parent:
                     return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
                 child_ids = [child.id for child in parent.children_ids if child is not None]
-                queryset = queryset(student_id__in=child_ids)
+                queryset = queryset.filter(student_id__in=child_ids)
             elif role != 'admin':
                 return Response({'detail': 'Role cannot access fee payments.'}, status=status.HTTP_403_FORBIDDEN)
 
