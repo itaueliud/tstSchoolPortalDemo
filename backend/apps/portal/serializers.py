@@ -208,6 +208,14 @@ class AdminUserWriteSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=SchoolUser.ROLE_CHOICES)
     phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=30)
     is_active = serializers.BooleanField(required=False)
+    # Student-specific fields
+    admission_number = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    class_id = serializers.CharField(required=False, allow_blank=True)
+    # Teacher-specific fields
+    subject = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    classes_taught = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    # Parent-specific fields
+    student_ids = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 
 class AdminFeeInvoiceWriteSerializer(serializers.Serializer):

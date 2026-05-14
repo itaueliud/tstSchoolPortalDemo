@@ -20,7 +20,7 @@ export type DashboardResponse = {
   announcements: DashboardAnnouncement[]
 }
 
-export function useDashboardSummary(role: UserRole) {
+export function useDashboardSummary(role: UserRole, childId = '') {
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -33,7 +33,8 @@ export function useDashboardSummary(role: UserRole) {
       setError('')
 
       try {
-        const response = await requestJson<DashboardResponse>(`/api/dashboard/${role}/summary/`)
+        const query = role === 'parent' && childId ? `?child_id=${encodeURIComponent(childId)}` : ''
+        const response = await requestJson<DashboardResponse>(`/api/dashboard/${role}/summary/${query}`)
         if (active) {
           setData(response)
         }
@@ -53,7 +54,7 @@ export function useDashboardSummary(role: UserRole) {
     return () => {
       active = false
     }
-  }, [role])
+  }, [role, childId])
 
   return { data, loading, error }
 }

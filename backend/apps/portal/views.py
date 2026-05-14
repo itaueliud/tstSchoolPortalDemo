@@ -69,6 +69,7 @@ class DashboardSummaryView(APIView):
 
     def get(self, request, role: str):
         role = role.lower()
+        self._requested_child_id = request.query_params.get('child_id', '').strip() if role == 'parent' else ''
         payload = {
             'role': role,
             'summary': self._summary_for_role(role, request.user),
@@ -145,29 +146,37 @@ class DashboardSummaryView(APIView):
                     'attendance': '0',
                     'fees_due': '0',
                     'latest_grade': 'N/A',
+                    'communication': _parent_communication_payload(user, None, []),
                 }
 
             children = [child for child in parent_profile.children_ids if child is not None]
             primary_child = children[0] if children else None
+            requested_child_id = getattr(self, '_requested_child_id', '')
+            active_child = _select_parent_child(children, requested_child_id) or primary_child
             fee_due_total = sum(max(float(child.fee_balance or 0), 0) for child in children)
+            child_rows = [_serialize_parent_child(child) for child in children]
 
             latest_grade = 'N/A'
-            if primary_child:
-                latest_result = StudentResult.objects(student_id=primary_child).order_by('-updated_at').first()
+            if active_child:
+                latest_result = StudentResult.objects(student_id=active_child).order_by('-updated_at').first()
                 if latest_result:
                     latest_grade = latest_result.grade
-                elif primary_child.gpa:
-                    latest_grade = f'{float(primary_child.gpa):.1f}'
+                elif active_child.gpa:
+                    latest_grade = f'{float(active_child.gpa):.1f}'
 
             return {
-                'child_name': primary_child.full_display_name if primary_child else 'No child linked',
-                'child_class': primary_child.current_class.name if primary_child and primary_child.current_class else '',
-                'class_teacher': primary_child.current_class.class_teacher if primary_child and primary_child.current_class else '',
-                'admission_number': primary_child.admission_number if primary_child else '',
-                'attendance': f'{float(primary_child.attendance_rate or 0):.0f}%' if primary_child else '0%',
+                'child_name': active_child.full_display_name if active_child else 'No child linked',
+                'child_class': active_child.current_class.name if active_child and active_child.current_class else '',
+                'class_teacher': active_child.current_class.class_teacher if active_child and active_child.current_class else '',
+                'admission_number': active_child.admission_number if active_child else '',
+                'attendance': f'{float(active_child.attendance_rate or 0):.0f}%' if active_child else '0%',
                 'fees_due': f'{fee_due_total:,.0f}',
                 'latest_grade': latest_grade,
                 'children_count': len(children),
+                'primary_child_id': str(primary_child.id) if primary_child else '',
+                'active_child_id': str(active_child.id) if active_child else '',
+                'children': child_rows,
+                'communication': _parent_communication_payload(user, active_child, children),
             }
 
         return {
@@ -542,6 +551,59 @@ class AdminClassDetailView(APIView):
         return None
 
 
+class AdminSchoolClassListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocked = self._require_admin(request)
+        if blocked:
+            return blocked
+
+        classes = SchoolClass.objects.order_by('name')
+        classes_data = [
+            {
+                'id': str(cls.id),
+                'name': cls.name,
+                'grade_level': cls.grade_level or '',
+                'room': cls.room or '',
+            }
+            for cls in classes
+        ]
+        return Response({'classes': classes_data})
+
+    def _require_admin(self, request):
+        if getattr(request.user, 'role', None) != 'admin':
+            return Response({'detail': 'Only admins can access this.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+
+class AdminStudentListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocked = self._require_admin(request)
+        if blocked:
+            return blocked
+
+        students = StudentProfile.objects.order_by('admission_number')
+        students_data = []
+        for student in students:
+            user = SchoolUser.objects(id=student.user_id).first()
+            if user:
+                students_data.append({
+                    'id': str(student.id),
+                    'admission_number': student.admission_number,
+                    'name': user.full_display_name,
+                    'class_name': student.current_class.name if student.current_class else 'N/A',
+                })
+        return Response({'students': students_data})
+
+    def _require_admin(self, request):
+        if getattr(request.user, 'role', None) != 'admin':
+            return Response({'detail': 'Only admins can access this.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+
 class AttendanceContextView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -855,27 +917,82 @@ class AdminUserCollectionView(APIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
+        role = data['role']
+
         if SchoolUser.objects(username__iexact=data['username']).first():
             return Response({'detail': 'Username already exists.'}, status=status.HTTP_400_BAD_REQUEST)
         if SchoolUser.objects(email__iexact=data['email']).first():
             return Response({'detail': 'Email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Student-specific validation
+        if role == SchoolUser.STUDENT:
+            if not data.get('admission_number'):
+                return Response({'detail': 'Admission number is required for students.'}, status=status.HTTP_400_BAD_REQUEST)
+            if StudentProfile.objects(admission_number=data['admission_number']).first():
+                return Response({'detail': 'Admission number already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+            if not data.get('class_id'):
+                return Response({'detail': 'Class assignment is required for students.'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = SchoolUser(
             username=data['username'],
             email=data['email'],
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
-            role=data['role'],
+            role=role,
             phone_number=data.get('phone_number', '') or '',
             is_active=data.get('is_active', True),
-            is_staff=data['role'] == SchoolUser.ADMIN,
+            is_staff=role == SchoolUser.ADMIN,
         )
         password = data.get('password') or None
         if not password:
             return Response({'detail': 'Password is required when creating a user.'}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(password)
         user.save()
-        self._log_action(request, 'create', 'user', str(user.id), {'username': user.username, 'role': user.role})
+
+        # Create role-specific profiles
+        if role == SchoolUser.STUDENT:
+            try:
+                school_class = SchoolClass.objects.get(id=data['class_id'])
+            except SchoolClass.DoesNotExist:
+                user.delete()
+                return Response({'detail': 'School class not found.'}, status=status.HTTP_404_NOT_FOUND)
+            StudentProfile(
+                user_id=user.id,
+                admission_number=data['admission_number'],
+                current_class=school_class,
+                attendance_rate=0,
+                fee_balance=0,
+                gpa=0,
+            ).save()
+        elif role == SchoolUser.TEACHER:
+            classes_taught = []
+            if data.get('classes_taught'):
+                for class_id in data['classes_taught']:
+                    try:
+                        school_class = SchoolClass.objects.get(id=class_id)
+                        classes_taught.append(school_class)
+                    except SchoolClass.DoesNotExist:
+                        pass
+            TeacherProfile(
+                user_id=user.id,
+                subject=data.get('subject', '') or '',
+                classes_taught=classes_taught,
+            ).save()
+        elif role == SchoolUser.PARENT:
+            children_ids = []
+            if data.get('student_ids'):
+                for student_id in data['student_ids']:
+                    try:
+                        student = StudentProfile.objects.get(id=student_id)
+                        children_ids.append(student)
+                    except StudentProfile.DoesNotExist:
+                        pass
+            ParentProfile(
+                user_id=user.id,
+                children_ids=children_ids,
+            ).save()
+
+        self._log_action(request, 'create', 'user', str(user.id), {'username': user.username, 'role': role})
         return Response({'user': self._serialize_user(user)}, status=status.HTTP_201_CREATED)
 
     def _require_admin(self, request):
@@ -1254,6 +1371,81 @@ def _student_profile(user):
 
 def _parent_profile(user):
     return ParentProfile.objects(user_id=getattr(user, 'id', None)).first()
+
+
+def _select_parent_child(children, requested_child_id: str):
+    if not requested_child_id:
+        return None
+
+    for child in children:
+        if str(child.id) == str(requested_child_id):
+            return child
+    return None
+
+
+def _serialize_parent_child(child: StudentProfile):
+    school_class = child.current_class
+    latest_result = StudentResult.objects(student_id=child).order_by('-updated_at').first()
+    latest_grade = 'N/A'
+    if latest_result:
+        latest_grade = latest_result.grade
+    elif child.gpa:
+        latest_grade = f'{float(child.gpa):.1f}'
+
+    return {
+        'id': str(child.id),
+        'name': child.full_display_name,
+        'admission_number': child.admission_number,
+        'class_name': school_class.name if school_class else 'N/A',
+        'class_teacher': school_class.class_teacher if school_class else '',
+        'attendance': f'{float(child.attendance_rate or 0):.0f}%',
+        'fees_due': f'{max(float(child.fee_balance or 0), 0):,.0f}',
+        'latest_grade': latest_grade,
+        'gpa': f'{float(child.gpa or 0):.1f}',
+    }
+
+
+def _parent_communication_payload(user: SchoolUser, active_child: StudentProfile | None, children):
+    office_phone = getattr(settings, 'SCHOOL_OFFICE_PHONE', '') or ''
+    office_email = getattr(settings, 'SCHOOL_OFFICE_EMAIL', '') or ''
+    office_hours = getattr(settings, 'SCHOOL_OFFICE_HOURS', 'Mon-Fri 8:00 AM - 5:00 PM')
+
+    return {
+        'office': {
+            'name': 'School Office',
+            'phone_number': office_phone,
+            'email': office_email,
+            'hours': office_hours,
+        },
+        'parent': {
+            'name': user.full_display_name,
+            'email': user.email,
+            'phone_number': user.phone_number or '',
+        },
+        'active_child': {
+            'id': str(active_child.id) if active_child else '',
+            'name': active_child.full_display_name if active_child else 'No child linked',
+            'admission_number': active_child.admission_number if active_child else '',
+            'class_name': active_child.current_class.name if active_child and active_child.current_class else '',
+            'class_teacher': active_child.current_class.class_teacher if active_child and active_child.current_class else '',
+        },
+        'children': [
+            {
+                'id': str(child.id),
+                'name': child.full_display_name,
+                'admission_number': child.admission_number,
+                'class_name': child.current_class.name if child.current_class else '',
+                'class_teacher': child.current_class.class_teacher if child.current_class else '',
+                'primary_contact': 'School office',
+            }
+            for child in children
+        ],
+        'notes': [
+            'Use the school office for official communication and fee queries.',
+            'For class-specific matters, ask the school office to connect you with the selected child\'s class teacher.',
+            'Announcements contain school-wide notices and schedule changes.',
+        ],
+    }
 
 
 def _assignment_payload(assignment: Assignment, student: StudentProfile | None = None):
@@ -2419,6 +2611,12 @@ class FeePaymentCollectionView(APIView):
             if not student:
                 return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
             queryset = queryset(student_id=student)
+        elif role == 'parent':
+            parent = _parent_profile(request.user)
+            if not parent:
+                return Response({'payments': [], 'page': page, 'page_size': page_size, 'total': 0, 'total_pages': 1})
+            child_ids = [child.id for child in parent.children_ids if child is not None]
+            queryset = queryset(student_id__in=child_ids)
         elif role != 'admin':
             return Response({'detail': 'Role cannot access fee payments.'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -2428,8 +2626,8 @@ class FeePaymentCollectionView(APIView):
 
     def post(self, request):
         role = _user_role(request.user)
-        if role not in {'student', 'admin'}:
-            return Response({'detail': 'Only students or admins can initiate fee payments.'}, status=status.HTTP_403_FORBIDDEN)
+        if role not in {'student', 'parent', 'admin'}:
+            return Response({'detail': 'Only students, parents, or admins can initiate fee payments.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = MpesaPaymentWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -2441,13 +2639,21 @@ class FeePaymentCollectionView(APIView):
         elif data.get('reference'):
             invoice = _resolve_fee_invoice(data['reference'])
 
-        if invoice is None and role == 'student':
+        if invoice is None and role in {'student', 'parent'}:
             current_student = _student_profile(request.user)
             if current_student:
                 for candidate in FeeInvoice.objects(student_id=current_student).order_by('-due_date', '-id'):
                     if float(candidate.paid_amount or 0) < float(candidate.amount or 0):
                         invoice = candidate
                         break
+            else:
+                parent = _parent_profile(request.user)
+                if parent:
+                    child_ids = [child.id for child in parent.children_ids if child is not None]
+                    for candidate in FeeInvoice.objects(student_id__in=child_ids).order_by('-due_date', '-id'):
+                        if float(candidate.paid_amount or 0) < float(candidate.amount or 0):
+                            invoice = candidate
+                            break
 
         if invoice is None:
             return Response({'detail': 'Fee invoice not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -2457,6 +2663,11 @@ class FeePaymentCollectionView(APIView):
             current_student = _student_profile(request.user)
             if not current_student or str(current_student.id) != str(student.id):
                 return Response({'detail': 'You can only pay your own fee invoices.'}, status=status.HTTP_403_FORBIDDEN)
+        elif role == 'parent':
+            parent = _parent_profile(request.user)
+            child_ids = {str(child.id) for child in parent.children_ids if child is not None} if parent else set()
+            if str(student.id) not in child_ids:
+                return Response({'detail': 'You can only pay invoices for your children.'}, status=status.HTTP_403_FORBIDDEN)
 
         amount_due = max(float(invoice.amount) - float(invoice.paid_amount), 0)
         amount = float(data.get('amount') or amount_due or invoice.amount)

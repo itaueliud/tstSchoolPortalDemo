@@ -23,9 +23,9 @@ export default function Home(){
               <Link href="/role-select" className="px-6 py-3 rounded-lg bg-[#0b1f4d] text-white font-semibold hover:bg-[#123a78] transition w-full sm:w-auto text-center">
                 Get Started Now â†’
               </Link>
-              <button className="px-6 py-3 rounded-lg border-2 border-[#123a78] text-[#123a78] hover:bg-blue-50 transition font-semibold w-full sm:w-auto">
+              <Link href="/features" className="px-6 py-3 rounded-lg border-2 border-[#123a78] text-[#123a78] hover:bg-blue-50 transition font-semibold w-full sm:w-auto text-center">
                 Learn More
-              </button>
+              </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export default function Home(){
                 </div>
               </div>
             </div>
-            <a href="#" className="text-[#123a78] text-xs mt-6 inline-block hover:text-[#0b1f4d] font-semibold">View Calendar â†’</a>
+            <a href="/parent/announcements" className="text-[#123a78] text-xs mt-6 inline-block hover:text-[#0b1f4d] font-semibold">View Calendar →</a>
           </div>
 
           {/* FEE COLLECTION */}
@@ -210,22 +210,22 @@ export default function Home(){
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition">
             <h3 className="text-lg font-semibold mb-6 text-gray-900">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">ðŸ‘¤</span>
+              <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
+                <span className="text-xl">ðŸ'¤</span>
                 <span>Add Student</span>
-              </button>
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">âœ“</span>
+              </Link>
+              <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
+                <span className="text-xl">âœ"</span>
                 <span>Mark Attendance</span>
-              </button>
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">ðŸ’³</span>
+              </Link>
+              <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
+                <span className="text-xl">ðŸ'³</span>
                 <span>Collect Fee</span>
-              </button>
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">âœ‰ï¸</span>
+              </Link>
+              <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
+                <span className="text-xl">âœ‰ï¸</span>
                 <span>Send Message</span>
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -244,9 +244,9 @@ export default function Home(){
             <Link href="/role-select" className="px-6 py-3 rounded-lg bg-white text-[#123a78] font-semibold hover:bg-blue-50 transition w-full sm:w-auto text-center">
               Start Your Free Trial
             </Link>
-            <a href="#" className="px-6 py-3 rounded-lg border-2 border-white text-white hover:bg-white/10 transition font-semibold w-full sm:w-auto text-center">
+            <Link href="/contact" className="px-6 py-3 rounded-lg border-2 border-white text-white hover:bg-white/10 transition font-semibold w-full sm:w-auto text-center">
               Contact Sales
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -265,25 +265,25 @@ export default function Home(){
             <div>
               <h3 className="text-white font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">Features</a></li>
-                <li><a href="#" className="hover:text-white transition">Pricing</a></li>
-                <li><a href="#" className="hover:text-white transition">Security</a></li>
+                <li><Link href="/features" className="hover:text-white transition">Features</Link></li>
+                <li><Link href="/pricing" className="hover:text-white transition">Pricing</Link></li>
+                <li><Link href="/security" className="hover:text-white transition">Security</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-white font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">About</a></li>
-                <li><a href="#" className="hover:text-white transition">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition">Contact</a></li>
+                <li><Link href="/about" className="hover:text-white transition">About</Link></li>
+                <li><Link href="/blog" className="hover:text-white transition">Blog</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-white font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition">Privacy</a></li>
-                <li><a href="#" className="hover:text-white transition">Terms</a></li>
-                <li><a href="#" className="hover:text-white transition">Support</a></li>
+                <li><Link href="/privacy" className="hover:text-white transition">Privacy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition">Terms</Link></li>
+                <li><Link href="/support" className="hover:text-white transition">Support</Link></li>
               </ul>
             </div>
           </div>

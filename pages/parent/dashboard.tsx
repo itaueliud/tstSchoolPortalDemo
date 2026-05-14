@@ -32,22 +32,56 @@ type FeeStatement = {
   payments: FeePayment[]
 }
 
+type ParentChildSummary = {
+  id: string
+  name: string
+  admission_number: string
+  class_name: string
+  class_teacher: string
+  attendance: string
+  fees_due: string
+  latest_grade: string
+  gpa: string
+}
+
 export default function ParentDashboard(){
-  const { data, loading, error } = useDashboardSummary('parent')
+  const [selectedChildId, setSelectedChildId] = useState('')
+  const { data, loading, error } = useDashboardSummary('parent', selectedChildId)
   const summary = data?.summary || {}
   const announcements = data?.announcements || []
-  const summaryValues = summary as Record<string, string | number | undefined>
+  const summaryValues = summary as Record<string, any>
+  const children = Array.isArray(summaryValues.children) ? summaryValues.children as ParentChildSummary[] : []
   const [statements, setStatements] = useState<FeeStatement[]>([])
   const [payments, setPayments] = useState<FeePayment[]>([])
   const [feesLoading, setFeesLoading] = useState(true)
   const [feesError, setFeesError] = useState('')
 
+  useEffect(() => {
+    if (!children.length) {
+      setSelectedChildId('')
+      return
+    }
+
+    const knownChild = children.some((child) => child.id === selectedChildId)
+    if (!selectedChildId || !knownChild) {
+      setSelectedChildId(String(summaryValues.active_child_id || summaryValues.primary_child_id || children[0].id))
+    }
+  }, [children, selectedChildId, summaryValues.active_child_id, summaryValues.primary_child_id])
+
+  const activeChild = useMemo(() => {
+    if (!children.length) {
+      return null
+    }
+
+    return children.find((child) => child.id === selectedChildId) || children[0]
+  }, [children, selectedChildId])
+
   const stats = useMemo<Array<{ title: string; value: string | number }>>(() => ([
-    { title: 'Child', value: String(summaryValues.child_name || 'No child linked') },
-    { title: 'Attendance', value: String(summaryValues.attendance || '0%') },
-    { title: 'Current GPA', value: String(summaryValues.latest_grade || 'N/A') },
-    { title: 'Class', value: String(summaryValues.child_class || 'N/A') },
-  ]), [summaryValues])
+    { title: 'Child', value: String(activeChild?.name || summaryValues.child_name || 'No child linked') },
+    { title: 'Attendance', value: String(activeChild?.attendance || summaryValues.attendance || '0%') },
+    { title: 'Current GPA', value: String(activeChild?.latest_grade || summaryValues.latest_grade || 'N/A') },
+    { title: 'Class', value: String(activeChild?.class_name || summaryValues.child_class || 'N/A') },
+  ]), [activeChild, summaryValues])
 
   useEffect(() => {
     let active = true
@@ -95,20 +129,53 @@ export default function ParentDashboard(){
           <User className="w-5 h-5 text-green-600" />
           <h3 className="text-lg font-semibold text-gray-900">Child Information</h3>
         </div>
+        {children.length > 1 && (
+          <label className="block mb-4 text-sm">
+            <span className="mb-1 block font-medium text-gray-700">Select child</span>
+            <select
+              value={selectedChildId}
+              onChange={(event) => setSelectedChildId(event.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            >
+              {children.map((child) => (
+                <option key={child.id} value={child.id}>
+                  {child.name} · {child.class_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="space-y-3">
-          <div className="p-3 border border-gray-100 rounded-lg">
+          <div className="rounded-lg border border-gray-100 bg-green-50/60 p-3">
             <p className="text-sm text-gray-600">Admission Number</p>
-            <p className="font-semibold text-gray-900">{String(summaryValues.admission_number || 'N/A')}</p>
+            <p className="font-semibold text-gray-900">{String(activeChild?.admission_number || summaryValues.admission_number || 'N/A')}</p>
           </div>
-          <div className="p-3 border border-gray-100 rounded-lg">
+          <div className="rounded-lg border border-gray-100 bg-blue-50/60 p-3">
             <p className="text-sm text-gray-600">Current Class</p>
-            <p className="font-semibold text-gray-900">{String(summaryValues.child_class || 'N/A')}</p>
+            <p className="font-semibold text-gray-900">{String(activeChild?.class_name || summaryValues.child_class || 'N/A')}</p>
           </div>
-          <div className="p-3 border border-gray-100 rounded-lg">
+          <div className="rounded-lg border border-gray-100 bg-yellow-50/60 p-3">
             <p className="text-sm text-gray-600">Class Teacher</p>
-            <p className="font-semibold text-gray-900">{String(summaryValues.class_teacher || 'N/A')}</p>
+            <p className="font-semibold text-gray-900">{String(activeChild?.class_teacher || summaryValues.class_teacher || 'N/A')}</p>
           </div>
         </div>
+        {children.length > 0 && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {children.map((child) => (
+              <button
+                key={child.id}
+                type="button"
+                onClick={() => setSelectedChildId(child.id)}
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  child.id === activeChild?.id ? 'border-green-300 bg-green-50' : 'border-gray-100 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <p className="font-semibold text-gray-900">{child.name}</p>
+                <p className="text-xs text-gray-500 mt-1">{child.class_name} · {child.admission_number}</p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Announcements */}
@@ -140,15 +207,15 @@ export default function ParentDashboard(){
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-lg border border-gray-100 bg-green-50 p-3">
             <p className="text-xs text-green-700 font-semibold">Attendance</p>
-            <p className="text-lg font-bold text-green-900 mt-1">{String(summaryValues.attendance || '0%')}</p>
+            <p className="text-lg font-bold text-green-900 mt-1">{String(activeChild?.attendance || summaryValues.attendance || '0%')}</p>
           </div>
           <div className="rounded-lg border border-gray-100 bg-blue-50 p-3">
             <p className="text-xs text-blue-700 font-semibold">Grade Snapshot</p>
-            <p className="text-lg font-bold text-blue-900 mt-1">{String(summaryValues.latest_grade || 'N/A')}</p>
+            <p className="text-lg font-bold text-blue-900 mt-1">{String(activeChild?.latest_grade || summaryValues.latest_grade || 'N/A')}</p>
           </div>
           <div className="rounded-lg border border-gray-100 bg-yellow-50 p-3">
             <p className="text-xs text-yellow-700 font-semibold">Fee Balance</p>
-            <p className="text-lg font-bold text-yellow-900 mt-1">KES {String(summaryValues.fees_due || '0')}</p>
+            <p className="text-lg font-bold text-yellow-900 mt-1">KES {String(activeChild?.fees_due || summaryValues.fees_due || '0')}</p>
           </div>
         </div>
       </div>

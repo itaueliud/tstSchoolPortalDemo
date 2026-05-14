@@ -49,6 +49,7 @@ type FeeResponse = {
 export default function ParentFeesPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [amount, setAmount] = useState('')
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState('')
   const [statements, setStatements] = useState<FeeStatement[]>([])
   const [payments, setPayments] = useState<FeePayment[]>([])
   const [summary, setSummary] = useState<FeeSummary>({})
@@ -99,6 +100,10 @@ export default function ParentFeesPage() {
         phone_number: phoneNumber.trim(),
       }
 
+      if (selectedInvoiceId) {
+        payload.invoice_id = selectedInvoiceId
+      }
+
       if (amount.trim()) {
         payload.amount = Number(amount)
       }
@@ -133,6 +138,18 @@ export default function ParentFeesPage() {
   }
 
   const openStatements = statements.filter((statement) => statement.outstanding_amount > 0)
+  const selectedStatement = openStatements.find((statement) => statement.id === selectedInvoiceId) || openStatements[0] || null
+
+  useEffect(() => {
+    if (!openStatements.length) {
+      setSelectedInvoiceId('')
+      return
+    }
+
+    if (!selectedInvoiceId || !openStatements.some((statement) => statement.id === selectedInvoiceId)) {
+      setSelectedInvoiceId(openStatements[0].id)
+    }
+  }, [openStatements, selectedInvoiceId])
 
   return (
     <Layout role="parent">
@@ -148,6 +165,19 @@ export default function ParentFeesPage() {
         </div>
 
         <form onSubmit={handleSendPayment} className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <select
+            value={selectedInvoiceId}
+            onChange={(event) => setSelectedInvoiceId(event.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+            disabled={openStatements.length === 0}
+          >
+            <option value="">Latest outstanding invoice</option>
+            {openStatements.map((statement) => (
+              <option key={statement.id} value={statement.id}>
+                {statement.reference} - {statement.student_name} ({statement.class})
+              </option>
+            ))}
+          </select>
           <input
             value={phoneNumber}
             onChange={(event) => setPhoneNumber(event.target.value)}
@@ -189,6 +219,7 @@ export default function ParentFeesPage() {
         </div>
 
         <p className="text-xs text-gray-500 mb-4">Leaving the amount blank will target the latest outstanding invoice for the linked child account.</p>
+        <p className="text-xs text-gray-500 mb-4">If you select an invoice above, the payment request will target that exact statement.</p>
         {message && <p className="text-sm text-green-700 mb-2">{message}</p>}
         {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
         {downloadError && <p className="text-sm text-red-600 mb-2">{downloadError}</p>}
@@ -259,6 +290,20 @@ export default function ParentFeesPage() {
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      <div className="md:col-span-3 card p-6">
+        <p className="text-sm font-semibold text-gray-900 mb-3">Selected Statement</p>
+        {selectedStatement ? (
+          <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <p className="font-semibold text-gray-900">{selectedStatement.reference}</p>
+            <p className="text-sm text-gray-600 mt-1">{selectedStatement.student_name} · {selectedStatement.class}</p>
+            <p className="text-sm text-gray-600 mt-1">Paid KES {selectedStatement.paid_amount.toLocaleString()} · Outstanding KES {selectedStatement.outstanding_amount.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-2">Due {selectedStatement.due_date ? new Date(selectedStatement.due_date).toLocaleDateString() : 'N/A'}</p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No outstanding statement is currently available for payment.</p>
         )}
       </div>
     </Layout>

@@ -5,33 +5,6 @@ import { Users, Banknote, FileText, Bell, CreditCard, BarChart3, Settings } from
 import { useDashboardSummary } from '../../src/useDashboardSummary'
 import { API_BASE_URL, requestBlob, requestJson } from '../../src/apiClient'
 
-const analyticsData = [
-  { month: 'Jan', attendance: 85, revenue: 120 },
-  { month: 'Feb', attendance: 88, revenue: 140 },
-  { month: 'Mar', attendance: 82, revenue: 160 },
-  { month: 'Apr', attendance: 90, revenue: 175 },
-  { month: 'May', revenue: 190 },
-]
-
-const users = [
-  { name: 'John Student', role: 'Student', email: 'john@school.com', status: 'Active' },
-  { name: 'Sarah Parent', role: 'Parent', email: 'sarah@school.com', status: 'Active' },
-  { name: 'Mike Teacher', role: 'Teacher', email: 'mike@school.com', status: 'Active' },
-  { name: 'Jane Admin', role: 'Admin', email: 'jane@school.com', status: 'Active' },
-]
-
-const feeData = [
-  { student: 'John Doe', class: 'Form 4A', amount: '25,000', status: 'Paid' },
-  { student: 'Jane Smith', class: 'Form 3B', amount: '18,500', status: 'Pending' },
-  { student: 'Peter Brown', class: 'Form 2C', amount: '22,000', status: 'Partial' },
-]
-
-const reports = [
-  { name: 'Monthly Attendance Report', date: '2026-05-01', type: 'PDF', key: 'attendance' },
-  { name: 'Fee Collection Summary', date: '2026-05-10', type: 'PDF', key: 'fees' },
-  { name: 'Student Performance', date: '2026-05-08', type: 'PDF', key: 'performance' },
-]
-
 type ManagedUser = {
   id?: string
   username?: string
@@ -80,6 +53,13 @@ type StudentOption = {
   class_name: string
 }
 
+type ClassOption = {
+  id: string
+  name: string
+  grade_level: string
+  room: string
+}
+
 type AdminActivity = {
   id: string
   action: string
@@ -99,6 +79,14 @@ const emptyUserForm = {
   phone_number: '',
   role: 'teacher',
   is_active: true,
+  // Student-specific fields
+  admission_number: '',
+  class_id: '',
+  // Teacher-specific fields
+  subject: '',
+  classes_taught: [] as string[],
+  // Parent-specific fields
+  student_ids: [] as string[],
 }
 
 const emptyFeeForm = {
@@ -147,6 +135,8 @@ export default function AdminDashboard(){
   const [managedFees, setManagedFees] = useState<ManagedFee[]>([])
   const [managedPayments, setManagedPayments] = useState<ManagedPayment[]>([])
   const [feeStudents, setFeeStudents] = useState<StudentOption[]>([])
+  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([])
+  const [availableStudents, setAvailableStudents] = useState<StudentOption[]>([])
   const [auditLogs, setAuditLogs] = useState<AdminActivity[]>([])
   const [managementLoading, setManagementLoading] = useState(true)
   const [managementError, setManagementError] = useState('')
@@ -165,14 +155,14 @@ export default function AdminDashboard(){
   const summaryValues = summary as Record<string, string | number | undefined>
 
   const cards = useMemo<Array<{ title: string; value: string | number }>>(() => ([
-    { title: 'Total Students', value: Number(summaryValues.students) || 542 },
-    { title: 'Teachers', value: Number(summaryValues.teachers) || 45 },
-    { title: 'Classes', value: Number(summaryValues.classes) || 18 },
-    { title: 'Revenue', value: summaryValues.revenue ? `KES ${summaryValues.revenue}` : 'KES 2.4M' },
+    { title: 'Total Students', value: Number(summaryValues.students) || 0 },
+    { title: 'Teachers', value: Number(summaryValues.teachers) || 0 },
+    { title: 'Classes', value: Number(summaryValues.classes) || 0 },
+    { title: 'Revenue', value: summaryValues.revenue ? `KES ${summaryValues.revenue}` : 'KES 0' },
   ]), [summaryValues])
 
-  const displayedUsers = (managedUsers.length ? managedUsers : (overview?.users || users)) as ManagedUser[]
-  const displayedFees = (managedFees.length ? managedFees : (overview?.fees || feeData)) as ManagedFee[]
+  const displayedUsers = managedUsers
+  const displayedFees = managedFees
 
   useEffect(() => {
     let active = true
@@ -283,16 +273,20 @@ export default function AdminDashboard(){
   }, [auditPage])
 
   const refreshManagementData = async () => {
-    const [usersResponse, feesResponse, paymentsResponse] = await Promise.all([
+    const [usersResponse, feesResponse, paymentsResponse, classesResponse, studentsResponse] = await Promise.all([
       requestJson<{ users: ManagedUser[]; total_pages: number }>(`/api/admin/users/?page=${userPage}&page_size=8`),
       requestJson<{ fees: ManagedFee[]; students: StudentOption[]; total_pages: number }>(`/api/admin/fees/?page=${feePage}&page_size=6`),
       requestJson<{ payments: ManagedPayment[]; total_pages: number }>('/api/fees/payments/?page=1&page_size=8'),
+      requestJson<{ classes: ClassOption[] }>('/api/admin/classes/list/').catch(() => ({ classes: [] })),
+      requestJson<{ students: StudentOption[] }>('/api/admin/students/').catch(() => ({ students: [] })),
     ])
 
     setManagedUsers(usersResponse.users)
     setManagedFees(feesResponse.fees)
     setManagedPayments(paymentsResponse.payments || [])
     setFeeStudents(feesResponse.students)
+    setAvailableClasses(classesResponse.classes || [])
+    setAvailableStudents(studentsResponse.students || [])
     setUserTotalPages(usersResponse.total_pages || 1)
     setFeeTotalPages(feesResponse.total_pages || 1)
   }
@@ -357,7 +351,7 @@ export default function AdminDashboard(){
     setSavingUser(true)
 
     try {
-      const payload: Record<string, string | boolean> = {
+      const payload: Record<string, string | boolean | string[]> = {
         username: userForm.username.trim(),
         email: userForm.email.trim(),
         first_name: userForm.first_name.trim(),
@@ -369,6 +363,17 @@ export default function AdminDashboard(){
 
       if (userForm.password.trim()) {
         payload.password = userForm.password.trim()
+      }
+
+      // Add role-specific fields
+      if (userForm.role === 'student') {
+        payload.admission_number = userForm.admission_number.trim()
+        payload.class_id = userForm.class_id
+      } else if (userForm.role === 'teacher') {
+        payload.subject = userForm.subject.trim()
+        payload.classes_taught = userForm.classes_taught
+      } else if (userForm.role === 'parent') {
+        payload.student_ids = userForm.student_ids
       }
 
       if (editingUserId) {
@@ -490,7 +495,7 @@ export default function AdminDashboard(){
           <h3 className="text-lg font-semibold text-gray-900">School Analytics</h3>
         </div>
         <div className="space-y-4">
-          {(overview?.analytics || analyticsData).map((item) => (
+          {(overview?.analytics || []).map((item) => (
             <div key={item.month} className="grid grid-cols-12 gap-3 items-center">
               <div className="col-span-2 sm:col-span-1 text-sm font-semibold text-gray-700">{item.month}</div>
               <div className="col-span-10 sm:col-span-5">
@@ -523,15 +528,13 @@ export default function AdminDashboard(){
           <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
         </div>
         <div className="space-y-3">
-          {(announcements.length ? announcements : [
-            { title: 'Sports Day', body: 'Next Saturday - All students participate' },
-            { title: 'New LMS Update', body: 'Platform improved with new features' },
-          ]).map((announcement, idx) => (
+          {(announcements.length ? announcements : []).map((announcement, idx) => (
             <div key={idx} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm font-semibold text-green-900">🎉 {announcement.title}</p>
+              <p className="text-sm font-semibold text-green-900">{announcement.title}</p>
               <p className="text-xs text-green-700 mt-1">{announcement.body}</p>
             </div>
           ))}
+          {announcements.length === 0 && <p className="text-sm text-gray-500">No active announcements available.</p>}
         </div>
       </div>
 
@@ -570,24 +573,97 @@ export default function AdminDashboard(){
           <Users className="w-5 h-5 text-green-600" />
           <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
         </div>
-        <form onSubmit={handleUserSubmit} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
-          <input value={userForm.username} onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Username" required />
-          <input value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" type="email" placeholder="Email" required />
-          <input value={userForm.first_name} onChange={(event) => setUserForm((current) => ({ ...current, first_name: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="First name" />
-          <input value={userForm.last_name} onChange={(event) => setUserForm((current) => ({ ...current, last_name: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Last name" />
-          <input value={userForm.phone_number} onChange={(event) => setUserForm((current) => ({ ...current, phone_number: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Phone number" />
-          <input value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" type="password" placeholder={editingUserId ? 'New password (optional)' : 'Password'} required={!editingUserId} />
-          <select value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
-            <option value="admin">Admin</option>
-            <option value="teacher">Teacher</option>
-            <option value="student">Student</option>
-            <option value="parent">Parent</option>
-          </select>
-          <label className="flex items-center gap-2 text-sm text-gray-700 px-3 py-2 border border-gray-200 rounded-lg bg-white">
-            <input checked={userForm.is_active} onChange={(event) => setUserForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
-            Active account
-          </label>
-          <div className="flex gap-2 sm:col-span-2 xl:col-span-4">
+        <form onSubmit={handleUserSubmit} className="space-y-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <input value={userForm.username} onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Username" required />
+            <input value={userForm.email} onChange={(event) => setUserForm((current) => ({ ...current, email: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" type="email" placeholder="Email" required />
+            <input value={userForm.first_name} onChange={(event) => setUserForm((current) => ({ ...current, first_name: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="First name" />
+            <input value={userForm.last_name} onChange={(event) => setUserForm((current) => ({ ...current, last_name: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Last name" />
+            <input value={userForm.phone_number} onChange={(event) => setUserForm((current) => ({ ...current, phone_number: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="Phone number" />
+            <input value={userForm.password} onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" type="password" placeholder={editingUserId ? 'New password (optional)' : 'Password'} required={!editingUserId} />
+            <select value={userForm.role} onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="admin">Admin</option>
+              <option value="teacher">Teacher</option>
+              <option value="student">Student</option>
+              <option value="parent">Parent</option>
+            </select>
+            <label className="flex items-center gap-2 text-sm text-gray-700 px-3 py-2 border border-gray-200 rounded-lg bg-white">
+              <input checked={userForm.is_active} onChange={(event) => setUserForm((current) => ({ ...current, is_active: event.target.checked }))} type="checkbox" />
+              Active account
+            </label>
+          </div>
+
+          {/* Student-specific fields */}
+          {userForm.role === 'student' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <input value={userForm.admission_number} onChange={(event) => setUserForm((current) => ({ ...current, admission_number: event.target.value }))} className="border border-blue-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Admission number" required />
+              <select value={userForm.class_id} onChange={(event) => setUserForm((current) => ({ ...current, class_id: event.target.value }))} className="border border-blue-200 rounded-lg px-3 py-2 text-sm bg-white" required>
+                <option value="">Select class (required)</option>
+                {availableClasses.map((cls) => (
+                  <option key={cls.id} value={cls.id}>{cls.name} - {cls.grade_level}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Teacher-specific fields */}
+          {userForm.role === 'teacher' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+              <input value={userForm.subject} onChange={(event) => setUserForm((current) => ({ ...current, subject: event.target.value }))} className="border border-green-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Subject" />
+              <div>
+                <p className="text-xs text-gray-600 font-semibold mb-1">Assign classes (optional)</p>
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2 bg-white border border-green-200 rounded-lg">
+                  {availableClasses.map((cls) => (
+                    <label key={cls.id} className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 rounded-full cursor-pointer hover:bg-green-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={userForm.classes_taught.includes(cls.id)}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setUserForm((current) => ({ ...current, classes_taught: [...current.classes_taught, cls.id] }))
+                          } else {
+                            setUserForm((current) => ({ ...current, classes_taught: current.classes_taught.filter((id) => id !== cls.id) }))
+                          }
+                        }}
+                      />
+                      {cls.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Parent-specific fields */}
+          {userForm.role === 'parent' && (
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-xs text-gray-600 font-semibold mb-2">Link to student children (optional)</p>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-white border border-purple-200 rounded-lg">
+                {availableStudents.length > 0 ? (
+                  availableStudents.map((student) => (
+                    <label key={student.id} className="flex items-center gap-1 text-xs px-2 py-1 bg-purple-100 rounded-full cursor-pointer hover:bg-purple-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={userForm.student_ids.includes(student.id)}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setUserForm((current) => ({ ...current, student_ids: [...current.student_ids, student.id] }))
+                          } else {
+                            setUserForm((current) => ({ ...current, student_ids: current.student_ids.filter((id) => id !== student.id) }))
+                          }
+                        }}
+                      />
+                      {student.name} ({student.admission_number})
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-500">No students available</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
             <button type="submit" disabled={savingUser} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold disabled:opacity-60">{editingUserId ? 'Update user' : 'Create user'}</button>
             <button type="button" onClick={resetUserForm} className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 bg-white">Clear</button>
           </div>
@@ -632,6 +708,7 @@ export default function AdminDashboard(){
             </tbody>
           </table>
         </div>
+        {displayedUsers.length === 0 && !managementLoading && <p className="mt-3 text-sm text-gray-500">No users found.</p>}
         <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
           <span>Page {userPage} of {userTotalPages}</span>
           <div className="flex gap-2">
@@ -698,6 +775,7 @@ export default function AdminDashboard(){
               </div>
             )
           })}
+          {displayedFees.length === 0 && !managementLoading && <p className="text-sm text-gray-500">No fee invoices found.</p>}
         </div>
         <div className="mt-6 border-t border-gray-100 pt-4">
           <div className="flex items-center justify-between mb-3">
@@ -739,7 +817,7 @@ export default function AdminDashboard(){
           <h3 className="text-lg font-semibold text-gray-900">Reports</h3>
         </div>
         <div className="space-y-2">
-          {(overview?.reports || reports).map((report, idx) => (
+          {(overview?.reports || []).map((report, idx) => (
             <div key={idx} className="flex items-center justify-between p-2 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900">{report.name}</p>
@@ -748,6 +826,7 @@ export default function AdminDashboard(){
               <button type="button" onClick={() => openReportPdf(report.key)} className="text-xs font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded hover:bg-green-100">Open PDF</button>
             </div>
           ))}
+          {(overview?.reports || []).length === 0 && <p className="text-sm text-gray-500">No reports available.</p>}
         </div>
         {overviewLoading && <p className="mt-3 text-xs text-gray-500">Loading live admin data...</p>}
         {overviewError && <p className="mt-3 text-xs text-red-600">{overviewError}</p>}
