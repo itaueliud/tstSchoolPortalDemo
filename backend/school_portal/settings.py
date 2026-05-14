@@ -74,8 +74,6 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'accounts.SchoolUser'
-
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
