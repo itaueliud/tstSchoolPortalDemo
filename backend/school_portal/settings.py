@@ -66,7 +66,9 @@ me.connect(host=MONGO_URI)
 
 DATABASES = {
     'default': {
-        'ENGINE': 'djongo',
+        # Django requires a default DB config even though app data uses mongoengine.
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
