@@ -9,11 +9,13 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes'}
 
-allowed_hosts = os.environ.get(
-    'DJANGO_ALLOWED_HOSTS',
-    'localhost,127.0.0.1,.onrender.com,.vercel.app'
-)
+allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(',') if host.strip()]
+
+# Always include deployment domains even when DJANGO_ALLOWED_HOSTS is explicitly set.
+for host in ('.onrender.com', '.vercel.app', 'localhost', '127.0.0.1'):
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
 
 render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
 if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
