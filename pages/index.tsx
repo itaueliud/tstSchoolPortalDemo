@@ -1,9 +1,35 @@
 ﻿import Link from 'next/link'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Bell,
+  BookOpen,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
+  MessageSquare,
+  Settings,
+  Sparkles,
+  Users,
+} from 'lucide-react'
 import LandingNav from '../components/LandingNav'
+
+const moduleCards = [
+  { icon: Users, title: 'Student Management', desc: 'Manage records, admissions and profiles' },
+  { icon: Check, title: 'Attendance Tracking', desc: 'Real-time tracking with detailed reports' },
+  { icon: CreditCard, title: 'Fee Management', desc: 'Collect fees with M-Pesa integration' },
+  { icon: CalendarDays, title: 'Exams & Results', desc: 'Publish results and report cards' },
+  { icon: BookOpen, title: 'Learning Management', desc: 'Centralized LMS for materials' },
+  { icon: MessageSquare, title: 'Messaging', desc: 'Instant school communication' },
+  { icon: ClipboardList, title: 'Timetable Scheduling', desc: 'Easy class scheduling' },
+  { icon: Settings, title: 'Dashboard Analytics', desc: 'Comprehensive insights' },
+]
 
 export default function Home(){
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50 to-slate-100">
+    <div id="top" className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50 to-slate-100">
       <LandingNav />
 
       {/* HERO SECTION */}
@@ -17,28 +43,28 @@ export default function Home(){
               Elevate <span className="text-[#1b4f9a]">Education</span>.
             </h1>
             <p className="text-gray-600 text-base md:text-lg mb-8 leading-relaxed">
-              TST School Portal is a comprehensive, secure solution for managing academics, attendance, fees, communication and more â€” all in one intelligent platform.
+              TST School Portal is a comprehensive, secure solution for managing academics, attendance, fees, communication and more all in one intelligent platform.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
-              <Link href="/role-select" className="px-6 py-3 rounded-lg bg-[#0b1f4d] text-white font-semibold hover:bg-[#123a78] transition w-full sm:w-auto text-center">
-                Get Started Now â†’
+              <Link href="/role-select" className="px-6 py-3 rounded-lg bg-[#0b1f4d] text-white font-semibold hover:bg-[#123a78] transition w-full sm:w-auto text-center inline-flex items-center justify-center gap-2">
+                Get Started Now <ArrowRight size={18} />
               </Link>
-              <Link href="/features" className="px-6 py-3 rounded-lg border-2 border-[#123a78] text-[#123a78] hover:bg-blue-50 transition font-semibold w-full sm:w-auto text-center">
-                Learn More
+              <Link href="/features" className="px-6 py-3 rounded-lg border-2 border-[#123a78] text-[#123a78] hover:bg-blue-50 transition font-semibold w-full sm:w-auto text-center inline-flex items-center justify-center gap-2">
+                Learn More <ArrowUpRight size={18} />
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <span className="text-[#123a78] text-lg">âœ“</span> <span className="text-gray-700 font-medium">Secure</span>
+                <Check size={18} className="text-[#123a78]" /> <span className="text-gray-700 font-medium">Secure</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#123a78] text-lg">âœ“</span> <span className="text-gray-700 font-medium">Role-Based</span>
+                <Check size={18} className="text-[#123a78]" /> <span className="text-gray-700 font-medium">Role-Based</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#123a78] text-lg">âœ“</span> <span className="text-gray-700 font-medium">Cloud-Based</span>
+                <Check size={18} className="text-[#123a78]" /> <span className="text-gray-700 font-medium">Cloud-Based</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[#123a78] text-lg">âœ“</span> <span className="text-gray-700 font-medium">24/7 Support</span>
+                <Check size={18} className="text-[#123a78]" /> <span className="text-gray-700 font-medium">24/7 Support</span>
               </div>
             </div>
           </div>
@@ -50,12 +76,12 @@ export default function Home(){
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <div className="text-3xl font-bold text-[#123a78]">842</div>
                   <div className="text-sm text-gray-700 font-medium">Students</div>
-                  <div className="text-xs text-[#123a78]">â†‘ 12% growth</div>
+                  <div className="text-xs text-[#123a78] inline-flex items-center gap-1"><ArrowUpRight size={12} /> 12% growth</div>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <div className="text-3xl font-bold text-[#1b4f9a]">36</div>
                   <div className="text-sm text-gray-700 font-medium">Teachers</div>
-                  <div className="text-xs text-[#1b4f9a]">â†‘ 8% growth</div>
+                  <div className="text-xs text-[#1b4f9a] inline-flex items-center gap-1"><ArrowUpRight size={12} /> 8% growth</div>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <div className="text-3xl font-bold text-[#123a78]">24</div>
@@ -65,7 +91,7 @@ export default function Home(){
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                   <div className="text-2xl font-bold text-[#1b4f9a]">1.59M</div>
                   <div className="text-sm text-gray-700 font-medium">Total Revenue (KES)</div>
-                  <div className="text-xs text-[#1b4f9a]">â†‘ 15% growth</div>
+                  <div className="text-xs text-[#1b4f9a] inline-flex items-center gap-1"><ArrowUpRight size={12} /> 15% growth</div>
                 </div>
               </div>
 
@@ -88,15 +114,15 @@ export default function Home(){
                 <h3 className="text-sm text-gray-700 font-semibold mb-4">Latest Updates</h3>
                 <ul className="space-y-3 text-xs">
                   <li className="flex gap-3 p-2 bg-blue-50 rounded-lg">
-                    <span className="text-lg">ðŸ“¢</span>
+                    <Bell size={18} className="text-[#123a78] shrink-0 mt-0.5" />
                     <span><strong>School Holiday</strong> - 20th June</span>
                   </li>
                   <li className="flex gap-3 p-2 bg-blue-50 rounded-lg">
-                    <span className="text-lg">ðŸ“…</span>
+                    <CalendarDays size={18} className="text-[#123a78] shrink-0 mt-0.5" />
                     <span><strong>PTA Meeting</strong> - This Saturday</span>
                   </li>
                   <li className="flex gap-3 p-2 bg-yellow-50 rounded-lg">
-                    <span className="text-lg">âœï¸</span>
+                    <Sparkles size={18} className="text-[#ca8a04] shrink-0 mt-0.5" />
                     <span><strong>Assignment Reminder</strong> - Submit on time</span>
                   </li>
                 </ul>
@@ -107,7 +133,7 @@ export default function Home(){
       </section>
 
       {/* MODULES SECTION */}
-      <section className="bg-gradient-to-b from-blue-50 to-slate-50 py-12 md:py-20">
+      <section id="modules" className="bg-gradient-to-b from-blue-50 to-slate-50 py-12 md:py-20 scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
           <h2 className="text-center text-3xl md:text-4xl font-bold mb-4 text-gray-900">
             Everything You Need, <span className="text-[#123a78]">All in One</span> Place
@@ -116,22 +142,17 @@ export default function Home(){
             Powerful modules to simplify school management, enhance collaboration, and improve educational outcomes.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { icon: 'ðŸ‘¥', title: 'Student Management', desc: 'Manage records, admissions and profiles' },
-              { icon: 'âœ“', title: 'Attendance Tracking', desc: 'Real-time tracking with detailed reports' },
-              { icon: 'ðŸ’³', title: 'Fee Management', desc: 'Collect fees with M-Pesa integration' },
-              { icon: 'ðŸ“Š', title: 'Exams & Results', desc: 'Publish results and report cards' },
-              { icon: 'ðŸ“š', title: 'Learning Management', desc: 'Centralized LMS for materials' },
-              { icon: 'ðŸ’¬', title: 'Messaging', desc: 'Instant school communication' },
-              { icon: 'ðŸ“‹', title: 'Timetable Scheduling', desc: 'Easy class scheduling' },
-              { icon: 'âš™ï¸', title: 'Dashboard Analytics', desc: 'Comprehensive insights' }
-            ].map((mod, i) => (
-              <div key={i} className="bg-white rounded-xl p-5 md:p-6 hover:shadow-lg transition border border-gray-200 hover:border-blue-300">
-                <div className="text-4xl mb-3">{mod.icon}</div>
-                <h3 className="font-semibold text-gray-900 mb-2 text-sm md:text-base">{mod.title}</h3>
-                <p className="text-gray-600 text-xs md:text-sm leading-relaxed">{mod.desc}</p>
-              </div>
-            ))}
+            {moduleCards.map((mod, i) => {
+              const Icon = mod.icon
+
+              return (
+                <div key={i} className="bg-white rounded-xl p-5 md:p-6 hover:shadow-lg transition border border-gray-200 hover:border-blue-300">
+                  <Icon size={32} className="text-[#123a78] mb-3" />
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm md:text-base">{mod.title}</h3>
+                  <p className="text-gray-600 text-xs md:text-sm leading-relaxed">{mod.desc}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -211,19 +232,19 @@ export default function Home(){
             <h3 className="text-lg font-semibold mb-6 text-gray-900">Quick Actions</h3>
             <div className="space-y-3">
               <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">ðŸ'¤</span>
+                <Users size={18} className="text-[#123a78] shrink-0" />
                 <span>Add Student</span>
               </Link>
               <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">âœ"</span>
+                <CheckCircle2 size={18} className="text-[#123a78] shrink-0" />
                 <span>Mark Attendance</span>
               </Link>
               <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">ðŸ'³</span>
+                <CreditCard size={18} className="text-[#123a78] shrink-0" />
                 <span>Collect Fee</span>
               </Link>
               <Link href="/role-select" className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition text-sm font-medium text-gray-900">
-                <span className="text-xl">âœ‰ï¸</span>
+                <MessageSquare size={18} className="text-[#123a78] shrink-0" />
                 <span>Send Message</span>
               </Link>
             </div>
@@ -241,11 +262,11 @@ export default function Home(){
             Join thousands of schools already using TST Portal to streamline operations and improve student outcomes.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/role-select" className="px-6 py-3 rounded-lg bg-white text-[#123a78] font-semibold hover:bg-blue-50 transition w-full sm:w-auto text-center">
-              Start Your Free Trial
+            <Link href="/role-select" className="px-6 py-3 rounded-lg bg-white text-[#123a78] font-semibold hover:bg-blue-50 transition w-full sm:w-auto text-center inline-flex items-center justify-center gap-2">
+              Start Your Free Trial <ArrowRight size={18} />
             </Link>
-            <Link href="/contact" className="px-6 py-3 rounded-lg border-2 border-white text-white hover:bg-white/10 transition font-semibold w-full sm:w-auto text-center">
-              Contact Sales
+            <Link href="/contact" className="px-6 py-3 rounded-lg border-2 border-white text-white hover:bg-white/10 transition font-semibold w-full sm:w-auto text-center inline-flex items-center justify-center gap-2">
+              Contact Sales <ArrowUpRight size={18} />
             </Link>
           </div>
         </div>
