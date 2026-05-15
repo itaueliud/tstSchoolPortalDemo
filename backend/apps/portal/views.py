@@ -666,50 +666,55 @@ class AttendanceContextView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        blocked = self._require_teacher_or_admin(request)
-        if blocked:
-            return blocked
+        try:
+            blocked = self._require_teacher_or_admin(request)
+            if blocked:
+                return blocked
 
-        school_class_id = request.query_params.get('school_class_id')
-        attendance_date = self._parse_date(request.query_params.get('date'))
-        attendance_moment = self._attendance_moment(attendance_date) if attendance_date else None
-        classes = SchoolClass.objects.order_by('name')
-        students_query = StudentProfile.objects
+            school_class_id = request.query_params.get('school_class_id')
+            attendance_date = self._parse_date(request.query_params.get('date'))
+            attendance_moment = self._attendance_moment(attendance_date) if attendance_date else None
+            classes = SchoolClass.objects.order_by('name')
+            students_query = StudentProfile.objects
 
-        selected_class = None
-        if school_class_id:
-            try:
-                selected_class = SchoolClass.objects.get(id=school_class_id)
-                students_query = StudentProfile.objects(current_class=selected_class)
-            except SchoolClass.DoesNotExist:
-                return Response({'detail': 'Selected class not found.'}, status=status.HTTP_404_NOT_FOUND)
+            selected_class = None
+            if school_class_id:
+                try:
+                    selected_class = SchoolClass.objects.get(id=school_class_id)
+                    students_query = StudentProfile.objects(current_class=selected_class)
+                except SchoolClass.DoesNotExist:
+                    return Response({'detail': 'Selected class not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        students = students_query.order_by('admission_number')
-        records = []
-        if selected_class and attendance_moment:
-            student_ids = [student.id for student in students]
-            records = list(AttendanceRecord.objects(student_id__in=student_ids, date=attendance_moment).order_by('student_id'))
+            students = students_query.order_by('admission_number')
+            records = []
+            if selected_class and attendance_moment:
+                student_ids = [student.id for student in students]
+                records = list(AttendanceRecord.objects(student_id__in=student_ids, date=attendance_moment).order_by('student_id'))
 
-        return Response({
-            'classes': [
-                {
-                    'id': str(item.id),
-                    'name': item.name,
-                    'grade_level': item.grade_level or '',
-                    'room': item.room or '',
-                    'class_teacher': item.class_teacher or '',
-                    'student_count': StudentProfile.objects(current_class=item).count(),
-                }
-                for item in classes
-            ],
-            'students': [
-                self._serialize_student(student)
-                for student in students
-            ],
-            'records': [self._serialize_record(record) for record in records],
-            'date': attendance_date.isoformat() if attendance_date else '',
-            'summary': self._summary_for_class(selected_class, attendance_moment) if selected_class and attendance_moment else None,
-        })
+            return Response({
+                'classes': [
+                    {
+                        'id': str(item.id),
+                        'name': item.name,
+                        'grade_level': item.grade_level or '',
+                        'room': item.room or '',
+                        'class_teacher': item.class_teacher or '',
+                        'student_count': StudentProfile.objects(current_class=item).count(),
+                    }
+                    for item in classes
+                ],
+                'students': [
+                    self._serialize_student(student)
+                    for student in students
+                ],
+                'records': [self._serialize_record(record) for record in records],
+                'date': attendance_date.isoformat() if attendance_date else '',
+                'summary': self._summary_for_class(selected_class, attendance_moment) if selected_class and attendance_moment else None,
+            })
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': 'Error loading attendance context.', 'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _serialize_student(self, student: StudentProfile):
         return {
@@ -770,54 +775,67 @@ class AttendanceRecordCollectionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        blocked = self._require_teacher_or_admin(request)
-        if blocked:
-            return blocked
+        try:
+            blocked = self._require_teacher_or_admin(request)
+            if blocked:
+                return blocked
 
-        school_class_id = request.query_params.get('school_class_id')
-        attendance_date = self._parse_date(request.query_params.get('date'))
-        attendance_moment = self._attendance_moment(attendance_date) if attendance_date else None
-        page, page_size = self._pagination(request)
+            school_class_id = request.query_params.get('school_class_id')
+            attendance_date = self._parse_date(request.query_params.get('date'))
+            attendance_moment = self._attendance_moment(attendance_date) if attendance_date else None
+            page, page_size = self._pagination(request)
 
-        queryset = AttendanceRecord.objects.order_by('-date', 'student_id')
-        if school_class_id:
-            school_class = SchoolClass.objects.get(id=school_class_id)
-            student_ids = [student.id for student in StudentProfile.objects(current_class=school_class)]
-            queryset = AttendanceRecord.objects(student_id__in=student_ids).order_by('-date', 'student_id')
-        if attendance_moment:
-            queryset = queryset.filter(date=attendance_moment)
+            queryset = AttendanceRecord.objects.order_by('-date', 'student_id')
+            if school_class_id:
+                try:
+                    school_class = SchoolClass.objects.get(id=school_class_id)
+                except SchoolClass.DoesNotExist:
+                    return Response({'detail': 'Selected class not found.'}, status=status.HTTP_404_NOT_FOUND)
+                student_ids = [student.id for student in StudentProfile.objects(current_class=school_class)]
+                queryset = AttendanceRecord.objects(student_id__in=student_ids).order_by('-date', 'student_id')
+            if attendance_moment:
+                queryset = queryset.filter(date=attendance_moment)
 
-        total = queryset.count()
-        records = [self._serialize_record(record) for record in queryset.skip((page - 1) * page_size).limit(page_size)]
-        return Response({'records': records, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+            total = queryset.count()
+            records = [self._serialize_record(record) for record in queryset.skip((page - 1) * page_size).limit(page_size)]
+            return Response({'records': records, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': 'Error loading attendance history.', 'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
-        blocked = self._require_teacher_or_admin(request)
-        if blocked:
-            return blocked
+        try:
+            blocked = self._require_teacher_or_admin(request)
+            if blocked:
+                return blocked
 
-        serializer = AttendanceBulkSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        school_class = SchoolClass.objects.get(id=data['school_class_id'])
-        attendance_moment = self._attendance_moment(data['date'])
+            serializer = AttendanceBulkSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            school_class = SchoolClass.objects.get(id=data['school_class_id'])
+            attendance_moment = self._attendance_moment(data['date'])
 
-        records = []
-        for row in data['records']:
-            student = StudentProfile.objects.get(id=row['student_id'])
-            if not student.current_class or str(student.current_class.id) != str(school_class.id):
-                return Response({'detail': f'{student.admission_number} is not assigned to {school_class.name}.'}, status=status.HTTP_400_BAD_REQUEST)
+            records = []
+            for row in data['records']:
+                student = StudentProfile.objects.get(id=row['student_id'])
+                if not student.current_class or str(student.current_class.id) != str(school_class.id):
+                    return Response({'detail': f'{student.admission_number} is not assigned to {school_class.name}.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            record = AttendanceRecord.objects(student_id=student, date=attendance_moment).first()
-            if record is None:
-                record = AttendanceRecord(student_id=student, date=attendance_moment)
-            record.status = row['status']
-            record.save()
-            records.append(record)
+                record = AttendanceRecord.objects(student_id=student, date=attendance_moment).first()
+                if record is None:
+                    record = AttendanceRecord(student_id=student, date=attendance_moment)
+                record.status = row['status']
+                record.save()
+                records.append(record)
 
-        self._recalculate_class_attendance(school_class)
-        self._log_action(request, 'bulk_update', 'attendance', f'{school_class.id}:{attendance_moment.date().isoformat()}', {'school_class': school_class.name, 'date': attendance_moment.date().isoformat(), 'count': len(records)})
-        return Response({'records': [self._serialize_record(record) for record in records]}, status=status.HTTP_201_CREATED)
+            self._recalculate_class_attendance(school_class)
+            self._log_action(request, 'bulk_update', 'attendance', f'{school_class.id}:{attendance_moment.date().isoformat()}', {'school_class': school_class.name, 'date': attendance_moment.date().isoformat(), 'count': len(records)})
+            return Response({'records': [self._serialize_record(record) for record in records]}, status=status.HTTP_201_CREATED)
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': 'Error saving attendance.', 'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _serialize_record(self, record: AttendanceRecord):
         return {
