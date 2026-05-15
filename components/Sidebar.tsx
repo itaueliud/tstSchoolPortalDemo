@@ -160,8 +160,9 @@ export default function Sidebar({ role }: { role: UserRole }) {
         <div className="fixed top-4 left-4 z-50 md:top-6 md:left-6">
           <button
             onClick={() => setIsOpen(true)}
-            className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white shadow-md"
+            title="Open sidebar"
             aria-label="Open sidebar"
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-b from-[#123a78] to-[#0d4b7d] text-white shadow-lg ring-1 ring-white/10 hover:scale-105 transform-gpu transition-transform"
           >
             <Menu size={18} />
           </button>
