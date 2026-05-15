@@ -47,7 +47,7 @@ export function getRoleMenuItems(role: UserRole): NavItem[] {
   const base: NavItem[] = [{ label: 'Dashboard', slug: 'dashboard', href: `/${role}/dashboard` }]
   const sections = roleSections[role].map((section) => ({
     ...section,
-    href: role === 'admin' && section.slug === 'analytics' ? `/${role}/stats` : `/${role}/${section.slug}`,
+    href: `/${role}/${section.slug}`,
   }))
   return [...base, ...sections]
 }
