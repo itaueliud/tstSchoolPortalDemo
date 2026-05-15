@@ -49,10 +49,11 @@ export default function Sidebar({ role }: { role: UserRole }) {
 
   return (
     <>
-      <aside
-        className={`${isOpen ? 'w-52 md:w-72' : 'w-16 md:w-20'} bg-gradient-to-b from-[#091c47] via-[#123a78] to-[#0d4b7d] px-2.5 py-3 md:px-3 md:py-4 text-white shadow-[0_18px_60px_-28px_rgba(8,15,40,0.95)] transition-all duration-300 fixed md:sticky md:top-0 md:left-0 top-0 left-0 h-screen z-40 flex flex-col overflow-hidden`}
-      >
-        <div className="flex items-center justify-between mb-6 md:mb-8 px-0 md:px-0 gap-2">
+      {isOpen ? (
+        <aside
+          className={`w-52 md:w-72 bg-gradient-to-b from-[#091c47] via-[#123a78] to-[#0d4b7d] px-2.5 py-3 md:px-3 md:py-4 text-white shadow-[0_18px_60px_-28px_rgba(8,15,40,0.95)] transition-all duration-300 fixed md:sticky md:top-0 md:left-0 top-0 left-0 h-screen z-40 flex flex-col overflow-hidden`}
+        >
+          <div className="flex items-center justify-between mb-6 md:mb-8 px-0 md:px-0 gap-2">
           <div className={`flex items-center gap-3 md:gap-4 flex-1 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'} transition-opacity`}>
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-[18px] bg-white flex items-center justify-center flex-shrink-0 shadow-[0_14px_32px_-18px_rgba(255,255,255,0.5)] border border-white/5">
               <Home className="w-6 h-6 text-[#0b1f4d]" />
@@ -147,14 +148,25 @@ export default function Sidebar({ role }: { role: UserRole }) {
           })}
         </nav>
 
-        <button
-          onClick={handleLogout}
-              className={`w-full p-2.5 md:p-4 rounded-[16px] bg-white/10 hover:bg-white/20 transition-colors text-white font-medium flex items-center justify-center gap-2.5 md:gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isOpen ? 'text-base' : 'text-sm'}`}
-        >
+          <button
+            onClick={handleLogout}
+            className={`w-full p-2.5 md:p-4 rounded-[16px] bg-white/10 hover:bg-white/20 transition-colors text-white font-medium flex items-center justify-center gap-2.5 md:gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] text-base`}
+          >
             <LogOut size={17} />
-              <span className="text-sm md:text-base">Logout</span>
-        </button>
-      </aside>
+            <span className="text-sm md:text-base">Logout</span>
+          </button>
+        </aside>
+      ) : (
+        <div className="fixed top-4 left-4 z-50 md:top-6 md:left-6">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white shadow-md"
+            aria-label="Open sidebar"
+          >
+            <Menu size={18} />
+          </button>
+        </div>
+      )}
     </>
   )
 }
