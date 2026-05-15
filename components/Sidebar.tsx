@@ -50,21 +50,17 @@ export default function Sidebar({ role }: { role: UserRole }) {
   return (
     <>
       <aside
-        className={`${isOpen ? 'md:w-72' : 'md:w-20'} w-16 bg-gradient-to-b from-[#091c47] via-[#123a78] to-[#0d4b7d] px-2 py-4 md:p-5 text-white shadow-[0_18px_60px_-28px_rgba(8,15,40,0.95)] transition-all duration-300 fixed md:sticky md:top-0 md:left-0 top-0 left-0 h-screen z-40 flex flex-col overflow-hidden`}
+        className={`${isOpen ? 'md:w-72' : 'md:w-20'} w-52 bg-gradient-to-b from-[#091c47] via-[#123a78] to-[#0d4b7d] px-3 py-4 md:p-5 text-white shadow-[0_18px_60px_-28px_rgba(8,15,40,0.95)] transition-all duration-300 fixed md:sticky md:top-0 md:left-0 top-0 left-0 h-screen z-40 flex flex-col overflow-hidden`}
       >
-        <div className="flex items-center justify-center md:justify-between mb-8 px-0 md:px-0">
-          <div className={`hidden md:flex items-center gap-4 flex-1 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'} transition-opacity`}>
+        <div className="flex items-center justify-between mb-8 px-0 md:px-0">
+          <div className={`flex items-center gap-3 md:gap-4 flex-1 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'} transition-opacity`}>
             <div className="w-14 h-14 rounded-[18px] bg-white flex items-center justify-center flex-shrink-0 shadow-[0_14px_32px_-18px_rgba(255,255,255,0.5)] border border-white/5">
               <Home className="w-6 h-6 text-[#0b1f4d]" />
             </div>
             <div>
-              <div className="font-semibold text-[28px] leading-none tracking-[-0.03em]">Academy</div>
-              <div className="mt-1 text-sm text-white/70">Portal</div>
+              <div className="font-semibold text-[22px] md:text-[28px] leading-none tracking-[-0.03em]">Academy</div>
+              <div className="mt-1 text-xs md:text-sm text-white/70">Portal</div>
             </div>
-          </div>
-
-          <div className="md:hidden flex items-center justify-center w-11 h-11 rounded-[16px] bg-white shadow-[0_14px_32px_-18px_rgba(255,255,255,0.5)] border border-white/5">
-            <Home className="w-6 h-6 text-[#0b1f4d]" />
           </div>
 
           <button
@@ -87,7 +83,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
               <Link
                 key={it.href}
                 href={it.href}
-                className={`group flex items-center justify-center md:justify-start gap-4 p-3 md:p-4 rounded-[18px] md:rounded-[22px] transition-colors ${active ? 'bg-white/10 font-semibold ring-1 ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_40px_-24px_rgba(8,15,40,0.8)]' : 'hover:bg-white/10'}`}
+                className={`group flex items-center justify-start gap-4 p-3 md:p-4 rounded-[18px] md:rounded-[22px] transition-colors ${active ? 'bg-white/10 font-semibold ring-1 ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_40px_-24px_rgba(8,15,40,0.8)]' : 'hover:bg-white/10'}`}
               >
                 <Icon>
                   {(() => {
@@ -135,7 +131,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
                     }
                   })()}
                 </Icon>
-                  <span className={`hidden md:inline text-[17px] font-medium leading-snug transition-all duration-200 ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 hidden'}`}>
+                  <span className={`text-[15px] md:text-[17px] font-medium leading-snug transition-all duration-200 ${isOpen ? 'opacity-100 translate-x-0' : 'md:opacity-0 md:-translate-x-2 md:hidden'}`}>
                   {it.label}
                 </span>
               </Link>
@@ -148,7 +144,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
             className={`w-full p-3 md:p-4 rounded-[18px] bg-white/10 hover:bg-white/20 transition-colors text-white font-medium flex items-center justify-center gap-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isOpen ? 'text-base' : 'text-sm'}`}
         >
           <LogOut size={18} />
-            <span className="hidden md:inline">Logout</span>
+            <span className="text-sm md:text-base">Logout</span>
         </button>
       </aside>
     </>

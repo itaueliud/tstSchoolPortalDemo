@@ -150,13 +150,24 @@ class DashboardSummaryView(APIView):
             if not parent_profile:
                 return {
                     'child_name': 'No child linked',
+                    'active_child_id': '',
+                    'primary_child_id': '',
+                    'children_count': 0,
+                    'children': [],
                     'attendance': '0',
                     'fees_due': '0',
                     'latest_grade': 'N/A',
                     'communication': _parent_communication_payload(user, None, []),
                 }
 
-            children = [child for child in parent_profile.children_ids if child is not None]
+            children = []
+            for child in parent_profile.children_ids:
+                if child is None:
+                    continue
+                try:
+                    children.append(child)
+                except Exception:
+                    continue
             primary_child = children[0] if children else None
             requested_child_id = getattr(self, '_requested_child_id', '')
             active_child = _select_parent_child(children, requested_child_id) or primary_child
@@ -1214,6 +1225,50 @@ class AdminUserDetailView(APIView):
             user.set_password(data['password'])
 
         user.save()
+
+        # Keep role-specific profile documents in sync when a user is edited.
+        if user.role == SchoolUser.STUDENT:
+            student_profile = StudentProfile.objects(user_id=user.id).first()
+            if student_profile:
+                if 'admission_number' in data and data.get('admission_number'):
+                    student_profile.admission_number = data['admission_number']
+                if 'class_id' in data and data.get('class_id'):
+                    try:
+                        student_profile.current_class = SchoolClass.objects.get(id=data['class_id'])
+                    except SchoolClass.DoesNotExist:
+                        return Response({'detail': 'School class not found.'}, status=status.HTTP_404_NOT_FOUND)
+                student_profile.save()
+        elif user.role == SchoolUser.TEACHER:
+            teacher_profile = TeacherProfile.objects(user_id=user.id).first()
+            if teacher_profile:
+                if 'subject' in data:
+                    teacher_profile.subject = data.get('subject', '') or ''
+                if 'classes_taught' in data:
+                    classes_taught = []
+                    for class_id in data.get('classes_taught') or []:
+                        try:
+                            school_class = SchoolClass.objects.get(id=class_id)
+                            classes_taught.append(school_class)
+                        except SchoolClass.DoesNotExist:
+                            continue
+                    teacher_profile.classes_taught = classes_taught
+                teacher_profile.save()
+        elif user.role == SchoolUser.PARENT:
+            parent_profile = ParentProfile.objects(user_id=user.id).first()
+            if parent_profile is None:
+                parent_profile = ParentProfile(user_id=user.id, children_ids=[])
+
+            if 'student_ids' in data:
+                children_ids = []
+                for student_id in data.get('student_ids') or []:
+                    try:
+                        student = StudentProfile.objects.get(id=student_id)
+                        children_ids.append(student)
+                    except StudentProfile.DoesNotExist:
+                        continue
+                parent_profile.children_ids = children_ids
+                parent_profile.save()
+
         AdminUserCollectionView()._log_action(request, 'update', 'user', str(user.id), {'username': user.username, 'role': user.role})
         return Response({'user': AdminUserCollectionView()._serialize_user(user)})
 
@@ -1809,8 +1864,16 @@ def _serialize_announcements(queryset):
 
 
 def _serialize_parent_child(child: StudentProfile):
-    school_class = child.current_class
-    latest_result = StudentResult.objects(student_id=child).order_by('-updated_at').first()
+    try:
+        school_class = child.current_class
+    except Exception:
+        school_class = None
+
+    try:
+        latest_result = StudentResult.objects(student_id=child).order_by('-updated_at').first()
+    except Exception:
+        latest_result = None
+
     latest_grade = 'N/A'
     if latest_result:
         latest_grade = latest_result.grade
@@ -1864,6 +1927,7 @@ def _parent_communication_payload(user: SchoolUser, active_child: StudentProfile
                 'primary_contact': 'School office',
             }
             for child in children
+            if child is not None
         ],
         'notes': [
             'Use the school office for official communication and fee queries.',
