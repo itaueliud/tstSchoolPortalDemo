@@ -717,22 +717,51 @@ class AttendanceContextView(APIView):
             return Response({'detail': 'Error loading attendance context.', 'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _serialize_student(self, student: StudentProfile):
+        class_name = ''
+        try:
+            school_class = student.current_class
+            class_name = school_class.name if school_class else ''
+        except Exception:
+            class_name = ''
+
         return {
             'id': str(student.id),
             'name': student.full_display_name,
             'admission_number': student.admission_number,
-            'class_name': student.current_class.name if student.current_class else '',
+            'class_name': class_name,
             'attendance_rate': round(float(student.attendance_rate or 0), 2),
         }
 
     def _serialize_record(self, record: AttendanceRecord):
+        school_class_name = ''
+        school_class_id = ''
+        student_name = ''
+        admission_number = ''
+
+        try:
+            student = record.student_id
+            if student:
+                student_name = student.full_display_name
+                admission_number = student.admission_number
+                try:
+                    school_class = student.current_class
+                    if school_class:
+                        school_class_id = str(school_class.id)
+                        school_class_name = school_class.name
+                except Exception:
+                    school_class_id = ''
+                    school_class_name = ''
+        except Exception:
+            student_name = ''
+            admission_number = ''
+
         return {
             'id': str(record.id),
-            'student_id': str(record.student_id.id),
-            'student_name': record.student_id.full_display_name,
-            'admission_number': record.student_id.admission_number,
-            'school_class_id': str(record.student_id.current_class.id) if record.student_id.current_class else '',
-            'school_class': record.student_id.current_class.name if record.student_id.current_class else '',
+            'student_id': str(getattr(getattr(record, 'student_id', None), 'id', '')),
+            'student_name': student_name,
+            'admission_number': admission_number,
+            'school_class_id': school_class_id,
+            'school_class': school_class_name,
             'date': record.date.isoformat() if record.date else '',
             'status': record.status,
         }
