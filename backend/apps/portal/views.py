@@ -383,9 +383,24 @@ class AdminOverviewView(APIView):
     def _report_items(self):
         return [
             {'name': 'Monthly Attendance Report', 'date': datetime.utcnow().strftime('%Y-%m-%d'), 'type': 'PDF', 'key': 'attendance'},
+            {'name': 'Admin Analytics Report', 'date': datetime.utcnow().strftime('%Y-%m-%d'), 'type': 'PDF', 'key': 'admin-stats'},
             {'name': 'Fee Collection Summary', 'date': datetime.utcnow().strftime('%Y-%m-%d'), 'type': 'PDF', 'key': 'fees'},
             {'name': 'Student Performance', 'date': datetime.utcnow().strftime('%Y-%m-%d'), 'type': 'PDF', 'key': 'performance'},
         ]
+
+
+class AdminStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if getattr(request.user, 'role', None) != 'admin':
+            return Response({'detail': 'Only admins can access stats data.'}, status=status.HTTP_403_FORBIDDEN)
+
+        payload = _build_admin_stats_payload(
+            request.query_params.get('year'),
+            request.query_params.get('class_id', '').strip(),
+        )
+        return Response(payload)
 
 
 class AdminActivityView(APIView):
@@ -1506,6 +1521,150 @@ def _select_parent_child(children, requested_child_id: str):
     return None
 
 
+def _resolve_admin_year(value: str | None):
+    current_year = datetime.utcnow().year
+    if not value:
+        return current_year
+
+    try:
+        parsed_year = int(value)
+    except (TypeError, ValueError):
+        return current_year
+
+    return parsed_year if 2000 <= parsed_year <= current_year + 1 else current_year
+
+
+def _resolve_school_class(class_id: str):
+    if not class_id:
+        return None
+
+    try:
+        return SchoolClass.objects(id=class_id).first()
+    except (me.ValidationError, me.DoesNotExist, TypeError, ValueError):
+        return None
+
+
+def _month_window(year: int, month: int):
+    start = datetime(year, month, 1)
+    end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
+    return start, end
+
+
+def _class_breakdown_for_year(year: int, selected_class=None):
+    class_rows = []
+    for school_class in SchoolClass.objects.order_by('name'):
+        student_queryset = StudentProfile.objects(current_class=school_class)
+        student_ids = [student.id for student in student_queryset]
+        student_count = len(student_ids)
+
+        year_start = datetime(year, 1, 1)
+        year_end = datetime(year + 1, 1, 1)
+        attendance_records = list(AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)) if student_ids else []
+        invoices = list(FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, due_date__lt=year_end)) if student_ids else []
+
+        present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+        attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
+        revenue = sum(float(invoice.paid_amount or 0) for invoice in invoices)
+        outstanding_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in invoices)
+
+        class_rows.append({
+            'id': str(school_class.id),
+            'name': school_class.name,
+            'grade_level': school_class.grade_level or '',
+            'room': school_class.room or '',
+            'class_teacher': school_class.class_teacher or '',
+            'student_count': student_count,
+            'attendance_rate': attendance_rate,
+            'revenue': round(revenue),
+            'outstanding_balance': round(outstanding_balance),
+            'selected': bool(selected_class and str(selected_class.id) == str(school_class.id)),
+        })
+
+    return class_rows
+
+
+def _build_admin_stats_payload(year_value: str | None = None, class_id: str = ''):
+    year = _resolve_admin_year(year_value)
+    selected_class = _resolve_school_class(class_id)
+    year_start = datetime(year, 1, 1)
+    year_end = datetime(year + 1, 1, 1)
+
+    student_queryset = StudentProfile.objects(current_class=selected_class) if selected_class else StudentProfile.objects
+    student_ids = [student.id for student in student_queryset]
+
+    attendance_queryset = AttendanceRecord.objects(date__gte=year_start, date__lt=year_end)
+    fee_queryset = FeeInvoice.objects(due_date__gte=year_start, due_date__lt=year_end)
+
+    if selected_class and student_ids:
+        attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)
+        fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, date__lt=year_end)
+
+    attendance_records = list(attendance_queryset)
+    fee_invoices = list(fee_queryset)
+    classes = list(SchoolClass.objects.order_by('name'))
+
+    present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+    attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
+    revenue_total = sum(float(invoice.paid_amount or 0) for invoice in fee_invoices)
+    pending_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in fee_invoices)
+
+    monthly_rows = []
+    for month_number in range(1, 13):
+        start, end = _month_window(year, month_number)
+        monthly_attendance_queryset = AttendanceRecord.objects(date__gte=start, date__lt=end)
+        monthly_fee_queryset = FeeInvoice.objects(due_date__gte=start, due_date__lt=end)
+
+        if selected_class and student_ids:
+            monthly_attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=start, date__lt=end)
+            monthly_fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=start, due_date__lt=end)
+
+        monthly_records = list(monthly_attendance_queryset)
+        monthly_invoices = list(monthly_fee_queryset)
+        monthly_present = sum(1 for record in monthly_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+        monthly_attendance = round((monthly_present / len(monthly_records)) * 100, 2) if monthly_records else 0
+        monthly_revenue = sum(float(invoice.paid_amount or 0) for invoice in monthly_invoices)
+
+        monthly_rows.append({
+            'month': datetime(year, month_number, 1).strftime('%b'),
+            'attendance': monthly_attendance,
+            'revenue': round(monthly_revenue),
+        })
+
+    class_rows = _class_breakdown_for_year(year, selected_class)
+    selected_class_row = next((row for row in class_rows if row['selected']), None)
+
+    available_years = [year - offset for offset in range(0, 5) if year - offset >= 2000]
+    available_classes = [
+        {
+            'id': str(school_class.id),
+            'name': school_class.name,
+            'grade_level': school_class.grade_level or '',
+            'room': school_class.room or '',
+        }
+        for school_class in classes
+    ]
+
+    return {
+        'summary': {
+            'students': student_queryset.count() if selected_class else StudentProfile.objects.count(),
+            'teachers': TeacherProfile.objects.count(),
+            'classes': len(classes),
+            'revenue': f'{revenue_total:,.0f}',
+            'pending_balance': f'{pending_balance:,.0f}',
+            'attendance_rate': attendance_rate,
+        },
+        'analytics': monthly_rows,
+        'class_breakdown': class_rows,
+        'selected_class': selected_class_row,
+        'filters': {
+            'year': year,
+            'class_id': str(selected_class.id) if selected_class else '',
+            'available_years': available_years,
+            'available_classes': available_classes,
+        },
+    }
+
+
 def _serialize_announcements(queryset):
     items = []
     for item in queryset:
@@ -2450,6 +2609,43 @@ class ReportPdfView(APIView):
                         record.status.title(),
                     ]
                     for record in records
+                ],
+            }
+
+        if report_key == 'admin-stats':
+            payload = _build_admin_stats_payload(
+                request.query_params.get('year'),
+                request.query_params.get('class_id', '').strip(),
+            )
+            selected_class = payload.get('selected_class') or {}
+            year = payload.get('filters', {}).get('year', datetime.utcnow().year)
+            class_name = selected_class.get('name') if selected_class else ''
+            subtitle_suffix = f' for {class_name}' if class_name else ''
+
+            return {
+                'title': f'Admin Analytics Report {subtitle_suffix}'.strip(),
+                'subtitle': f'Year {year} overview with class comparison, revenue, and attendance trends.',
+                'filename': f'admin-analytics-{year}.pdf',
+                'metrics': [
+                    {'label': 'Year', 'value': str(year)},
+                    {'label': 'Students', 'value': str(payload['summary']['students'])},
+                    {'label': 'Teachers', 'value': str(payload['summary']['teachers'])},
+                    {'label': 'Classes', 'value': str(payload['summary']['classes'])},
+                    {'label': 'Attendance Rate', 'value': f"{payload['summary']['attendance_rate']}%"},
+                    {'label': 'Revenue', 'value': f"KES {payload['summary']['revenue']}"},
+                    {'label': 'Outstanding Balance', 'value': f"KES {payload['summary']['pending_balance']}"},
+                ],
+                'table_title': 'Class Breakdown',
+                'table_headers': ['Class', 'Students', 'Attendance', 'Revenue', 'Outstanding'],
+                'rows': [
+                    [
+                        row['name'],
+                        str(row['student_count']),
+                        f"{row['attendance_rate']}%",
+                        f"KES {row['revenue']:,.0f}",
+                        f"KES {row['outstanding_balance']:,.0f}",
+                    ]
+                    for row in payload['class_breakdown']
                 ],
             }
 

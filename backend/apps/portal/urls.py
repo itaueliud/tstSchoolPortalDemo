@@ -13,6 +13,7 @@ from .views import (
     AdminSchoolClassListView,
     AdminStudentListView,
     AdminOverviewView,
+    AdminStatsView,
     AdminUserCollectionView,
     AdminUserDetailView,
     AttendanceContextView,
@@ -35,6 +36,7 @@ from .views import (
 urlpatterns = [
     path('<str:role>/summary/', DashboardSummaryView.as_view(), name='dashboard-summary'),
     path('admin/overview/', AdminOverviewView.as_view(), name='admin-overview'),
+    path('admin/stats/', AdminStatsView.as_view(), name='admin-stats'),
     path('admin/activity/', AdminActivityView.as_view(), name='admin-activity'),
     path('admin/classes/list/', AdminSchoolClassListView.as_view(), name='admin-classes-list'),
     path('admin/students/', AdminStudentListView.as_view(), name='admin-students-list'),
