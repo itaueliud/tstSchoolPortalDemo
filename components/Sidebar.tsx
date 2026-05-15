@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Home,
   ChevronDown,
@@ -39,6 +39,17 @@ const Icon = ({ children }: { children: React.ReactNode }) => (
 export default function Sidebar({ role }: { role: UserRole }) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(true)
+
+  // Default to hidden on dashboard pages
+  useEffect(() => {
+    try {
+      if (router.pathname && router.pathname.includes('dashboard')) {
+        setIsOpen(false)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [router.pathname])
 
   const items = getRoleMenuItems(role)
 
