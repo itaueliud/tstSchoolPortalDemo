@@ -1620,32 +1620,35 @@ def _month_window(year: int, month: int):
 def _class_breakdown_for_year(year: int, selected_class=None):
     class_rows = []
     for school_class in SchoolClass.objects.order_by('name'):
-        student_queryset = StudentProfile.objects(current_class=school_class)
-        student_ids = [student.id for student in student_queryset]
-        student_count = len(student_ids)
+        try:
+            student_queryset = StudentProfile.objects(current_class=school_class)
+            student_ids = [student.id for student in student_queryset]
+            student_count = len(student_ids)
 
-        year_start = datetime(year, 1, 1)
-        year_end = datetime(year + 1, 1, 1)
-        attendance_records = list(AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)) if student_ids else []
-        invoices = list(FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, due_date__lt=year_end)) if student_ids else []
+            year_start = datetime(year, 1, 1)
+            year_end = datetime(year + 1, 1, 1)
+            attendance_records = list(AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)) if student_ids else []
+            invoices = list(FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, due_date__lt=year_end)) if student_ids else []
 
-        present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
-        attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
-        revenue = sum(float(invoice.paid_amount or 0) for invoice in invoices)
-        outstanding_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in invoices)
+            present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+            attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
+            revenue = sum(float(invoice.paid_amount or 0) for invoice in invoices)
+            outstanding_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in invoices)
 
-        class_rows.append({
-            'id': str(school_class.id),
-            'name': school_class.name,
-            'grade_level': school_class.grade_level or '',
-            'room': school_class.room or '',
-            'class_teacher': school_class.class_teacher or '',
-            'student_count': student_count,
-            'attendance_rate': attendance_rate,
-            'revenue': round(revenue),
-            'outstanding_balance': round(outstanding_balance),
-            'selected': bool(selected_class and str(selected_class.id) == str(school_class.id)),
-        })
+            class_rows.append({
+                'id': str(school_class.id),
+                'name': school_class.name,
+                'grade_level': school_class.grade_level or '',
+                'room': school_class.room or '',
+                'class_teacher': school_class.class_teacher or '',
+                'student_count': student_count,
+                'attendance_rate': attendance_rate,
+                'revenue': round(revenue),
+                'outstanding_balance': round(outstanding_balance),
+                'selected': bool(selected_class and str(selected_class.id) == str(school_class.id)),
+            })
+        except Exception:
+            continue
 
     return class_rows
 
@@ -1656,60 +1659,78 @@ def _build_admin_stats_payload(year_value: str | None = None, class_id: str = ''
     year_start = datetime(year, 1, 1)
     year_end = datetime(year + 1, 1, 1)
 
-    student_queryset = StudentProfile.objects(current_class=selected_class) if selected_class else StudentProfile.objects
-    student_ids = [student.id for student in student_queryset]
+    try:
+        student_queryset = StudentProfile.objects(current_class=selected_class) if selected_class else StudentProfile.objects
+        student_ids = [student.id for student in student_queryset]
 
-    attendance_queryset = AttendanceRecord.objects(date__gte=year_start, date__lt=year_end)
-    fee_queryset = FeeInvoice.objects(due_date__gte=year_start, due_date__lt=year_end)
+        attendance_queryset = AttendanceRecord.objects(date__gte=year_start, date__lt=year_end)
+        fee_queryset = FeeInvoice.objects(due_date__gte=year_start, due_date__lt=year_end)
 
-    if selected_class and student_ids:
-        attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)
-        fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, date__lt=year_end)
+        if selected_class and student_ids:
+            attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=year_start, date__lt=year_end)
+            fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=year_start, due_date__lt=year_end)
 
-    attendance_records = list(attendance_queryset)
-    fee_invoices = list(fee_queryset)
-    classes = list(SchoolClass.objects.order_by('name'))
+        attendance_records = list(attendance_queryset)
+        fee_invoices = list(fee_queryset)
+        classes = list(SchoolClass.objects.order_by('name'))
 
-    present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
-    attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
-    revenue_total = sum(float(invoice.paid_amount or 0) for invoice in fee_invoices)
-    pending_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in fee_invoices)
+        present_count = sum(1 for record in attendance_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+        attendance_rate = round((present_count / len(attendance_records)) * 100, 2) if attendance_records else 0
+        revenue_total = sum(float(invoice.paid_amount or 0) for invoice in fee_invoices)
+        pending_balance = sum(max(float(invoice.amount or 0) - float(invoice.paid_amount or 0), 0) for invoice in fee_invoices)
+    except Exception:
+        student_ids = []
+        attendance_records = []
+        fee_invoices = []
+        classes = list(SchoolClass.objects.order_by('name'))
+        attendance_rate = 0
+        revenue_total = 0
+        pending_balance = 0
 
     monthly_rows = []
     for month_number in range(1, 13):
-        start, end = _month_window(year, month_number)
-        monthly_attendance_queryset = AttendanceRecord.objects(date__gte=start, date__lt=end)
-        monthly_fee_queryset = FeeInvoice.objects(due_date__gte=start, due_date__lt=end)
+        try:
+            start, end = _month_window(year, month_number)
+            monthly_attendance_queryset = AttendanceRecord.objects(date__gte=start, date__lt=end)
+            monthly_fee_queryset = FeeInvoice.objects(due_date__gte=start, due_date__lt=end)
 
-        if selected_class and student_ids:
-            monthly_attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=start, date__lt=end)
-            monthly_fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=start, due_date__lt=end)
+            if selected_class and student_ids:
+                monthly_attendance_queryset = AttendanceRecord.objects(student_id__in=student_ids, date__gte=start, date__lt=end)
+                monthly_fee_queryset = FeeInvoice.objects(student_id__in=student_ids, due_date__gte=start, due_date__lt=end)
 
-        monthly_records = list(monthly_attendance_queryset)
-        monthly_invoices = list(monthly_fee_queryset)
-        monthly_present = sum(1 for record in monthly_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
-        monthly_attendance = round((monthly_present / len(monthly_records)) * 100, 2) if monthly_records else 0
-        monthly_revenue = sum(float(invoice.paid_amount or 0) for invoice in monthly_invoices)
+            monthly_records = list(monthly_attendance_queryset)
+            monthly_invoices = list(monthly_fee_queryset)
+            monthly_present = sum(1 for record in monthly_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+            monthly_attendance = round((monthly_present / len(monthly_records)) * 100, 2) if monthly_records else 0
+            monthly_revenue = sum(float(invoice.paid_amount or 0) for invoice in monthly_invoices)
 
-        monthly_rows.append({
-            'month': datetime(year, month_number, 1).strftime('%b'),
-            'attendance': monthly_attendance,
-            'revenue': round(monthly_revenue),
-        })
+            monthly_rows.append({
+                'month': datetime(year, month_number, 1).strftime('%b'),
+                'attendance': monthly_attendance,
+                'revenue': round(monthly_revenue),
+            })
+        except Exception:
+            monthly_rows.append({
+                'month': datetime(year, month_number, 1).strftime('%b'),
+                'attendance': 0,
+                'revenue': 0,
+            })
 
     class_rows = _class_breakdown_for_year(year, selected_class)
     selected_class_row = next((row for row in class_rows if row['selected']), None)
 
     available_years = [year - offset for offset in range(0, 5) if year - offset >= 2000]
-    available_classes = [
-        {
-            'id': str(school_class.id),
-            'name': school_class.name,
-            'grade_level': school_class.grade_level or '',
-            'room': school_class.room or '',
-        }
-        for school_class in classes
-    ]
+    available_classes = []
+    for school_class in classes:
+        try:
+            available_classes.append({
+                'id': str(school_class.id),
+                'name': school_class.name,
+                'grade_level': school_class.grade_level or '',
+                'room': school_class.room or '',
+            })
+        except Exception:
+            continue
 
     # Build per-class monthly series (attendance % and revenue) to support
     # frontend comparisons and CSV/PRD exports. This iterates classes and
