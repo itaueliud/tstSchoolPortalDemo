@@ -1644,6 +1644,44 @@ def _build_admin_stats_payload(year_value: str | None = None, class_id: str = ''
         for school_class in classes
     ]
 
+    # Build per-class monthly series (attendance % and revenue) to support
+    # frontend comparisons and CSV/PRD exports. This iterates classes and
+    # computes monthly aggregates for each class using the same year window.
+    class_monthly = []
+    for school_class in classes:
+        # resolve student ids for the class
+        students_in_class = list(StudentProfile.objects(current_class=school_class))
+        student_ids_in_class = [s.id for s in students_in_class]
+
+        months_series = []
+        for month_number in range(1, 13):
+            start, end = _month_window(year, month_number)
+            monthly_att_qs = AttendanceRecord.objects(date__gte=start, date__lt=end)
+            monthly_fee_qs = FeeInvoice.objects(due_date__gte=start, due_date__lt=end)
+
+            if student_ids_in_class:
+                monthly_att_qs = AttendanceRecord.objects(student_id__in=student_ids_in_class, date__gte=start, date__lt=end)
+                monthly_fee_qs = FeeInvoice.objects(student_id__in=student_ids_in_class, due_date__gte=start, due_date__lt=end)
+
+            monthly_records = list(monthly_att_qs)
+            monthly_invoices = list(monthly_fee_qs)
+
+            monthly_present = sum(1 for record in monthly_records if record.status in {AttendanceRecord.PRESENT, AttendanceRecord.LATE})
+            monthly_attendance = round((monthly_present / len(monthly_records)) * 100, 2) if monthly_records else 0
+            monthly_revenue = sum(float(invoice.paid_amount or 0) for invoice in monthly_invoices)
+
+            months_series.append({
+                'month': datetime(year, month_number, 1).strftime('%b'),
+                'attendance': monthly_attendance,
+                'revenue': round(monthly_revenue),
+            })
+
+        class_monthly.append({
+            'id': str(school_class.id),
+            'name': school_class.name,
+            'series': months_series,
+        })
+
     return {
         'summary': {
             'students': student_queryset.count() if selected_class else StudentProfile.objects.count(),
@@ -1655,6 +1693,7 @@ def _build_admin_stats_payload(year_value: str | None = None, class_id: str = ''
         },
         'analytics': monthly_rows,
         'class_breakdown': class_rows,
+        'class_monthly': class_monthly,
         'selected_class': selected_class_row,
         'filters': {
             'year': year,

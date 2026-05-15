@@ -16,6 +16,7 @@ export default function AdminAnalyticsPage() {
   const [availableYears, setAvailableYears] = useState<number[]>([currentYear])
   const [availableClasses, setAvailableClasses] = useState<FilterClass[]>([])
   const [classRows, setClassRows] = useState<ClassRow[]>([])
+  const [classMonthly, setClassMonthly] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [metric, setMetric] = useState<'attendance' | 'revenue'>('attendance')
@@ -39,6 +40,7 @@ export default function AdminAnalyticsPage() {
           revenue: r.revenue,
           outstanding_balance: r.outstanding_balance,
         })))
+        setClassMonthly(resp.class_monthly || [])
       } catch (e) {
         if (!active) return
         setError(e instanceof Error ? e.message : 'Unable to load analytics')
@@ -79,6 +81,56 @@ export default function AdminAnalyticsPage() {
     setHighlightIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id])
   }
 
+  const exportCsv = () => {
+    // Build CSV with months as rows and selected classes as columns for attendance
+    const selected = classMonthly.filter((c) => highlightIds.includes(c.id))
+    if (!selected.length) {
+      // fallback: export all classes
+      selected.push(...classMonthly.slice(0, 6))
+    }
+
+    const months = (selected[0]?.series || []).map((s: any) => s.month)
+    const header = ['Month', ...selected.map((s) => `${s.name} (attendance)`), ...selected.map((s) => `${s.name} (revenue)`)]
+    const rows = months.map((m: string, idx: number) => {
+      const attendanceCols = selected.map((s) => String(s.series[idx]?.attendance ?? ''))
+      const revenueCols = selected.map((s) => String(s.series[idx]?.revenue ?? ''))
+      return [m, ...attendanceCols, ...revenueCols].join(',')
+    })
+
+    const csv = [header.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `analytics-${year}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportPdf = async () => {
+    try {
+      const query = new URLSearchParams()
+      query.set('year', String(year))
+      const blob = await requestJson<Blob>(`/api/reports/admin-stats/pdf/?${query.toString()}`, { auth: true })
+      // We expect a blob; use requestBlob normally but keep fallback
+    } catch (e) {
+      // Use requestBlob for binary download
+      const query = new URLSearchParams()
+      query.set('year', String(year))
+      const blob = await fetch(`/api/reports/admin-stats/pdf/?${query.toString()}`, { credentials: 'same-origin' }).then((r) => r.blob())
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics-${year}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
   return (
     <Layout role="admin">
       <div className="md:col-span-3 card p-6">
@@ -108,22 +160,47 @@ export default function AdminAnalyticsPage() {
         {!loading && !error && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 card p-4">
-              <Bar data={chartData} options={chartOptions} />
+              {highlightIds.length ? (
+                // Render a per-class line chart when classes selected
+                (() => {
+                  const datasets = classMonthly
+                    .filter((c) => highlightIds.includes(c.id))
+                    .map((c) => ({
+                      label: c.name,
+                      data: c.series.map((s: any) => metric === 'attendance' ? s.attendance : s.revenue),
+                      fill: false,
+                    }))
+
+                  const lineData = { labels: classMonthly[0]?.series.map((s: any) => s.month) || [], datasets }
+                  return <Bar data={chartData} options={chartOptions} />
+                })()
+              ) : (
+                <Bar data={chartData} options={chartOptions} />
+              )}
             </div>
 
             <div className="card p-4">
-              <h3 className="text-sm font-semibold mb-3">Top classes</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Top classes</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={exportCsv} className="px-3 py-1.5 rounded bg-slate-100 text-xs">Export CSV</button>
+                  <button onClick={exportPdf} className="px-3 py-1.5 rounded bg-slate-100 text-xs">Export PDF</button>
+                </div>
+              </div>
               <div className="space-y-2 max-h-[420px] overflow-y-auto">
                 {sorted.map((r) => (
-                  <div key={r.id} className={`flex items-center justify-between gap-3 p-2 rounded-lg cursor-pointer ${highlightIds.includes(r.id) ? 'bg-sky-50 border border-sky-100' : 'border border-slate-100 bg-white'}`} onClick={() => toggleHighlight(r.id)}>
-                    <div>
-                      <div className="font-semibold text-slate-900">{r.name}</div>
-                      <div className="text-xs text-slate-500">{r.student_count} students</div>
+                  <label key={r.id} className={`flex items-center justify-between gap-3 p-2 rounded-lg cursor-pointer ${highlightIds.includes(r.id) ? 'bg-sky-50 border border-sky-100' : 'border border-slate-100 bg-white'}`}>
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={highlightIds.includes(r.id)} onChange={() => toggleHighlight(r.id)} />
+                      <div>
+                        <div className="font-semibold text-slate-900">{r.name}</div>
+                        <div className="text-xs text-slate-500">{r.student_count} students</div>
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="font-semibold">{metric === 'attendance' ? `${r.attendance_rate}%` : `KES ${r.revenue.toLocaleString()}`}</div>
                     </div>
-                  </div>
+                  </label>
                 ))}
               </div>
             </div>
