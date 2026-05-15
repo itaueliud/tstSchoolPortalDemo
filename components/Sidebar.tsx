@@ -29,8 +29,8 @@ import { clearAuthSession, type UserRole } from '../src/auth'
 import { getRoleMenuItems } from '../src/navigation'
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
-  <div className="w-11 h-11 rounded-[18px] flex items-center justify-center text-white transition-colors">
-    <div className="w-full h-full rounded-[18px] flex items-center justify-center bg-white/10 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+  <div className="w-10 h-10 rounded-[16px] flex items-center justify-center text-white transition-colors">
+    <div className="w-full h-full rounded-[16px] flex items-center justify-center bg-white/10 border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
       {children}
     </div>
   </div>
@@ -89,45 +89,45 @@ export default function Sidebar({ role }: { role: UserRole }) {
                   {(() => {
                     switch (it.slug) {
                       case 'dashboard':
-                        return <Home className="w-4 h-4" />
+                        return <Home className="w-3.5 h-3.5" />
                       case 'stats':
-                        return <Users className="w-4 h-4" />
+                        return <Users className="w-3.5 h-3.5" />
                       case 'analytics':
-                        return <BarChart2 className="w-4 h-4" />
+                        return <BarChart2 className="w-3.5 h-3.5" />
                       case 'classes':
-                        return <BookOpen className="w-4 h-4" />
+                        return <BookOpen className="w-3.5 h-3.5" />
                       case 'attendance':
-                        return <CalendarCheck className="w-4 h-4" />
+                        return <CalendarCheck className="w-3.5 h-3.5" />
                       case 'users':
-                        return <User className="w-4 h-4" />
+                        return <User className="w-3.5 h-3.5" />
                       case 'fees':
-                        return <DollarSign className="w-4 h-4" />
+                        return <DollarSign className="w-3.5 h-3.5" />
                       case 'settings':
-                        return <Settings className="w-4 h-4" />
+                        return <Settings className="w-3.5 h-3.5" />
                       case 'reports':
-                        return <FileText className="w-4 h-4" />
+                        return <FileText className="w-3.5 h-3.5" />
                       case 'announcements':
-                        return <Megaphone className="w-4 h-4" />
+                        return <Megaphone className="w-3.5 h-3.5" />
                       case 'assignments':
-                        return <Clipboard className="w-4 h-4" />
+                        return <Clipboard className="w-3.5 h-3.5" />
                       case 'grades':
-                        return <Edit3 className="w-4 h-4" />
+                        return <Edit3 className="w-3.5 h-3.5" />
                       case 'performance':
-                        return <BarChart2 className="w-4 h-4" />
+                        return <BarChart2 className="w-3.5 h-3.5" />
                       case 'messaging':
-                        return <MessageCircle className="w-4 h-4" />
+                        return <MessageCircle className="w-3.5 h-3.5" />
                       case 'timetable':
-                        return <Calendar className="w-4 h-4" />
+                        return <Calendar className="w-3.5 h-3.5" />
                       case 'results':
-                        return <FileText className="w-4 h-4" />
+                        return <FileText className="w-3.5 h-3.5" />
                       case 'notifications':
-                        return <Bell className="w-4 h-4" />
+                        return <Bell className="w-3.5 h-3.5" />
                       case 'communication':
-                        return <MessageCircle className="w-4 h-4" />
+                        return <MessageCircle className="w-3.5 h-3.5" />
                       case 'progress':
-                        return <Activity className="w-4 h-4" />
+                        return <Activity className="w-3.5 h-3.5" />
                       default:
-                        return <Home className="w-4 h-4" />
+                        return <Home className="w-3.5 h-3.5" />
                     }
                   })()}
                 </Icon>
