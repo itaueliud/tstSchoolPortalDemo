@@ -783,9 +783,9 @@ class AttendanceRecordCollectionView(APIView):
         if school_class_id:
             school_class = SchoolClass.objects.get(id=school_class_id)
             student_ids = [student.id for student in StudentProfile.objects(current_class=school_class)]
-            queryset = queryset(student_id__in=student_ids)
+            queryset = AttendanceRecord.objects(student_id__in=student_ids).order_by('-date', 'student_id')
         if attendance_moment:
-            queryset = queryset(date=attendance_moment)
+            queryset = queryset.filter(date=attendance_moment)
 
         total = queryset.count()
         records = [self._serialize_record(record) for record in queryset.skip((page - 1) * page_size).limit(page_size)]
