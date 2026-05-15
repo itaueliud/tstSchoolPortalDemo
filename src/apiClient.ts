@@ -1,7 +1,7 @@
 import { getAuthToken } from './auth'
 
 const DEFAULT_API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://tstschoolportaldemo.onrender.com'
+  ? ''
   : 'http://localhost:8000'
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
