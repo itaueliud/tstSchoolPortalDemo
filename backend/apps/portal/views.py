@@ -691,23 +691,38 @@ class AttendanceContextView(APIView):
                 student_ids = [student.id for student in students]
                 records = list(AttendanceRecord.objects(student_id__in=student_ids, date=attendance_moment).order_by('student_id'))
 
-            return Response({
-                'classes': [
-                    {
+            class_rows = []
+            for item in classes:
+                try:
+                    class_rows.append({
                         'id': str(item.id),
                         'name': item.name,
                         'grade_level': item.grade_level or '',
                         'room': item.room or '',
                         'class_teacher': item.class_teacher or '',
                         'student_count': StudentProfile.objects(current_class=item).count(),
-                    }
-                    for item in classes
-                ],
-                'students': [
-                    self._serialize_student(student)
-                    for student in students
-                ],
-                'records': [self._serialize_record(record) for record in records],
+                    })
+                except Exception:
+                    continue
+
+            student_rows = []
+            for student in students:
+                try:
+                    student_rows.append(self._serialize_student(student))
+                except Exception:
+                    continue
+
+            record_rows = []
+            for record in records:
+                try:
+                    record_rows.append(self._serialize_record(record))
+                except Exception:
+                    continue
+
+            return Response({
+                'classes': class_rows,
+                'students': student_rows,
+                'records': record_rows,
                 'date': attendance_date.isoformat() if attendance_date else '',
                 'summary': self._summary_for_class(selected_class, attendance_moment) if selected_class and attendance_moment else None,
             })
@@ -826,7 +841,12 @@ class AttendanceRecordCollectionView(APIView):
                 queryset = queryset.filter(date=attendance_moment)
 
             total = queryset.count()
-            records = [self._serialize_record(record) for record in queryset.skip((page - 1) * page_size).limit(page_size)]
+            records = []
+            for record in queryset.skip((page - 1) * page_size).limit(page_size):
+                try:
+                    records.append(self._serialize_record(record))
+                except Exception:
+                    continue
             return Response({'records': records, 'page': page, 'page_size': page_size, 'total': total, 'total_pages': max((total + page_size - 1) // page_size, 1)})
         except Exception as exc:
             import traceback
