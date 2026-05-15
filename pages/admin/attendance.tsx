@@ -114,6 +114,32 @@ export default function AdminAttendancePage() {
   useEffect(() => {
     let active = true
 
+    const loadClasses = async () => {
+      try {
+        const response = await requestJson<{ classes: AttendanceClass[] }>('/api/dashboard/admin/classes/list/')
+        if (!active) return
+
+        setClasses(response.classes || [])
+        if (!selectedClassId && response.classes.length > 0) {
+          setSelectedClassId(response.classes[0].id)
+        }
+      } catch {
+        if (active) {
+          setClasses([])
+        }
+      }
+    }
+
+    loadClasses()
+
+    return () => {
+      active = false
+    }
+  }, [selectedClassId])
+
+  useEffect(() => {
+    let active = true
+
     const loadContext = async () => {
       setLoadingContext(true)
       setErrorMessage('')
@@ -126,7 +152,6 @@ export default function AdminAttendancePage() {
         const response = await requestJson<AttendanceContextResponse>(`/api/dashboard/attendance/context/?${query.toString()}`)
         if (!active) return
 
-        setClasses(response.classes)
         setStudents(response.students)
         setRecords(response.records)
         setSummaryData(response.summary)
@@ -135,10 +160,6 @@ export default function AdminAttendancePage() {
           acc[student.id] = existing?.status || 'present'
           return acc
         }, {}) : {})
-
-        if (!selectedClassId && response.classes.length > 0) {
-          setSelectedClassId(response.classes[0].id)
-        }
       } catch (loadError) {
         if (active) {
           setErrorMessage(loadError instanceof Error ? loadError.message : 'Unable to load attendance context')
