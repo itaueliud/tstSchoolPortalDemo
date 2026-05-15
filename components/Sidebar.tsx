@@ -3,12 +3,16 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import React, { useState } from 'react'
-import { Home, ChevronDown, Menu, X } from 'lucide-react'
+import { Home, ChevronDown, Menu, X, LogOut, Users, BarChart2, BookOpen, CalendarCheck, User, DollarSign, Settings, FileText, Megaphone, Clipboard, Edit3, MessageCircle, Calendar, Bell, Activity } from 'lucide-react'
 import { clearAuthSession, type UserRole } from '../src/auth'
 import { getRoleMenuItems } from '../src/navigation'
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
-  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/10 text-white transition-colors">{children}</div>
+  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-colors">
+    <div className="w-full h-full rounded-xl flex items-center justify-center bg-white/10 backdrop-blur-sm border border-white/10 shadow-sm">
+      {children}
+    </div>
+  </div>
 )
 
 export default function Sidebar({ role }: { role: UserRole }) {
@@ -45,11 +49,11 @@ export default function Sidebar({ role }: { role: UserRole }) {
         isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
         <div className="flex items-center justify-between mb-8">
-          <div className={`flex items-center gap-3 flex-1 ${
+          <div className={`flex items-center gap-4 flex-1 ${
               isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0'
             } transition-opacity`}>
-              <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Home className="w-6 h-6 text-[#0b1f4d]" />
+              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0 shadow-sm border border-white/10">
+                <Home className="w-6 h-6 text-white" />
               </div>
               <div>
                 <div className="font-bold text-lg">Academy</div>
@@ -72,36 +76,77 @@ export default function Sidebar({ role }: { role: UserRole }) {
         </div>
 
         <nav className="space-y-2 flex-1 overflow-y-auto pt-2">
-          {items.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              onClick={() => setIsMobileOpen(false)}
-              className={`group flex items-center gap-3 p-3 rounded-lg transition-colors hover:scale-[1.01] ${
-                router.asPath === it.href || router.pathname === it.href
-                  ? 'bg-white/25 font-semibold ring-1 ring-white/20'
-                  : 'hover:bg-white/15'
-              }`}
-            >
-              <Icon>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4">
-                  <path d="M3 12h18" strokeWidth="2" />
-                </svg>
-              </Icon>
-              <span className={`font-medium transition-all duration-200 ${
-                isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 hidden'
-              }`}>{it.label}</span>
-            </Link>
-          ))}
+          {items.map((it) => {
+            const active = router.asPath === it.href || router.pathname === it.href
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={() => setIsMobileOpen(false)}
+                className={`group flex items-center gap-3 p-3 rounded-2xl transition-transform transform ${active ? 'bg-white/10 font-semibold ring-1 ring-white/20 shadow-inner' : 'hover:bg-white/10'} `}
+              >
+                <Icon>
+                  {(() => {
+                    switch (it.slug) {
+                      case 'dashboard':
+                        return <Home className="w-4 h-4" />
+                      case 'stats':
+                        return <Users className="w-4 h-4" />
+                      case 'analytics':
+                        return <BarChart2 className="w-4 h-4" />
+                      case 'classes':
+                        return <BookOpen className="w-4 h-4" />
+                      case 'attendance':
+                        return <CalendarCheck className="w-4 h-4" />
+                      case 'users':
+                        return <User className="w-4 h-4" />
+                      case 'fees':
+                        return <DollarSign className="w-4 h-4" />
+                      case 'settings':
+                        return <Settings className="w-4 h-4" />
+                      case 'reports':
+                        return <FileText className="w-4 h-4" />
+                      case 'announcements':
+                        return <Megaphone className="w-4 h-4" />
+                      case 'assignments':
+                        return <Clipboard className="w-4 h-4" />
+                      case 'grades':
+                        return <Edit3 className="w-4 h-4" />
+                      case 'performance':
+                        return <BarChart2 className="w-4 h-4" />
+                      case 'messaging':
+                        return <MessageCircle className="w-4 h-4" />
+                      case 'timetable':
+                        return <Calendar className="w-4 h-4" />
+                      case 'results':
+                        return <FileText className="w-4 h-4" />
+                      case 'notifications':
+                        return <Bell className="w-4 h-4" />
+                      case 'communication':
+                        return <MessageCircle className="w-4 h-4" />
+                      case 'progress':
+                        return <Activity className="w-4 h-4" />
+                      default:
+                        return <Home className="w-4 h-4" />
+                    }
+                  })()}
+                </Icon>
+                <span className={`font-medium transition-all duration-200 ${
+                  isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 hidden'
+                }`}>{it.label}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         <button
           onClick={handleLogout}
-          className={`w-full p-3 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-white font-medium ${
+          className={`w-full p-3 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors text-white font-medium flex items-center justify-center gap-3 ${
             isOpen ? 'text-base' : 'text-sm'
           }`}
         >
-          {isOpen ? 'Logout' : 'Out'}
+          <LogOut size={18} />
+          <span className={`${isOpen ? 'inline' : 'hidden'}`}>Logout</span>
         </button>
       </aside>
     </>
