@@ -2711,6 +2711,10 @@ class TeacherTimetableView(APIView):
         blocked = self._require_teacher_or_admin(request)
         if blocked:
             return blocked
+        
+        # Only admin can create timetable entries
+        if getattr(request.user, 'role', None) != 'admin':
+            return Response({'detail': 'Only admins can create timetable entries.'}, status=status.HTTP_403_FORBIDDEN)
 
         week_start = _week_start_from_value(request.data.get('week_start') if isinstance(request.data, dict) else None)
         payload = request.data.get('entries') if isinstance(request.data, dict) and isinstance(request.data.get('entries'), list) else None
@@ -2889,6 +2893,146 @@ class TeacherTimetableExportView(APIView):
 
         response = HttpResponse(buffer.getvalue(), content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="teacher-timetable-{week_start.isoformat()}.csv"'
+        return response
+
+    def _require_teacher_or_admin(self, request):
+        if getattr(request.user, 'role', None) not in {'teacher', 'admin'}:
+            return Response({'detail': 'Only teachers or admins can export timetables.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def _resolve_teacher_id(self, request):
+        if getattr(request.user, 'role', None) == 'admin':
+            return request.query_params.get('teacher_id') or getattr(request.user, 'id', None)
+        return getattr(request.user, 'id', None)
+
+
+class TeacherTimetableExportPdfView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocked = self._require_teacher_or_admin(request)
+        if blocked:
+            return blocked
+
+        week_start = _week_start_from_value(request.query_params.get('week_start'))
+        teacher_id = self._resolve_teacher_id(request)
+        entries = list(
+            TeacherTimetableEntry.objects(teacher_id=teacher_id, week_start=week_start)
+            .order_by('day_of_week', 'start_time')
+        )
+        entries = sorted(entries, key=lambda entry: (_weekday_sort_key(entry.day_of_week), entry.start_time))
+
+        # Get teacher info
+        teacher_profile = TeacherProfile.objects(user_id=teacher_id).first()
+        teacher_name = 'Unknown'
+        if teacher_profile:
+            try:
+                user = SchoolUser.objects.get(id=teacher_profile.user_id)
+                teacher_name = user.full_display_name or user.username
+            except SchoolUser.DoesNotExist:
+                pass
+
+        # Group entries by day of week
+        entries_by_day = {}
+        for entry in entries:
+            if entry.day_of_week not in entries_by_day:
+                entries_by_day[entry.day_of_week] = []
+            entries_by_day[entry.day_of_week].append(entry)
+
+        buffer = BytesIO()
+        document = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=12 * mm,
+            leftMargin=12 * mm,
+            topMargin=12 * mm,
+            bottomMargin=12 * mm,
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'TimetableTitle',
+            parent=styles['Title'],
+            textColor=colors.HexColor('#0f172a'),
+            fontSize=16,
+            leading=20,
+            spaceAfter=4,
+        )
+        subtitle_style = ParagraphStyle(
+            'Subtitle',
+            parent=styles['Normal'],
+            textColor=colors.HexColor('#64748b'),
+            fontSize=10,
+            leading=12,
+            spaceAfter=12,
+        )
+        body_style = ParagraphStyle(
+            'TimetableBody',
+            parent=styles['BodyText'],
+            textColor=colors.HexColor('#334155'),
+            fontSize=8,
+            leading=10,
+        )
+
+        story = [
+            Paragraph('Weekly Timetable', title_style),
+            Paragraph(f'Teacher: {teacher_name} | Week: {week_start.isoformat()}', subtitle_style),
+        ]
+
+        # Create timetable grid: Days as columns, time slots as rows
+        day_order = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        day_labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+        # Build time slots
+        time_slots = set()
+        for entry in entries:
+            time_slots.add((entry.start_time, entry.end_time))
+        
+        time_slots = sorted(list(time_slots))
+
+        if time_slots:
+            # Build table: first row = day headers, first column = time slots
+            table_rows = [
+                [Paragraph('<b>Time</b>', body_style)] + [Paragraph(f'<b>{day}</b>', body_style) for day in day_labels]
+            ]
+
+            for start_time, end_time in time_slots:
+                row = [Paragraph(f'{start_time}-{end_time}', body_style)]
+                for day in day_order:
+                    day_entries = [e for e in entries_by_day.get(day, []) if e.start_time == start_time]
+                    if day_entries:
+                        entry = day_entries[0]
+                        cell_text = f'{entry.subject}<br/>{entry.school_class.name}<br/><i>{entry.room or "N/A"}</i>'
+                        row.append(Paragraph(cell_text, body_style))
+                    else:
+                        row.append(Paragraph('', body_style))
+                table_rows.append(row)
+
+            timetable = Table(table_rows, colWidths=[25 * mm, 24 * mm, 24 * mm, 24 * mm, 24 * mm, 24 * mm, 24 * mm, 24 * mm])
+            timetable.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e293b')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f1f5f9')]),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f1f5f9')),
+            ]))
+            story.append(timetable)
+        else:
+            story.append(Paragraph('No timetable entries for this week.', body_style))
+
+        document.build(story)
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="timetable-{week_start.isoformat()}.pdf"'
         return response
 
     def _require_teacher_or_admin(self, request):

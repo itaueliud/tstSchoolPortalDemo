@@ -414,6 +414,23 @@ export default function AdminTimetablePage() {
     }
   }
 
+  const handleDownloadPdf = async () => {
+    if (!selectedTeacherId) return
+
+    try {
+      const query = new URLSearchParams({ week_start: weekStart, teacher_id: selectedTeacherId })
+      const blob = await requestBlob(`/api/dashboard/timetable/export-pdf/?${query.toString()}`)
+      const url = window.URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `timetable-${weekStart}.pdf`
+      anchor.click()
+      window.URL.revokeObjectURL(url)
+    } catch (downloadError) {
+      setErrorMessage(downloadError instanceof Error ? downloadError.message : 'Unable to download PDF')
+    }
+  }
+
   return (
     <Layout role="admin">
       <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -437,6 +454,10 @@ export default function AdminTimetablePage() {
             <button type="button" onClick={handleDownload} disabled={!selectedTeacherId} className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60">
               <Download className="w-4 h-4" />
               Download CSV
+            </button>
+            <button type="button" onClick={handleDownloadPdf} disabled={!selectedTeacherId} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+              <Download className="w-4 h-4" />
+              Download PDF
             </button>
           </div>
         </div>
