@@ -11,6 +11,7 @@ const roleSections: Record<UserRole, Array<{ label: string; slug: string }>> = {
     { label: 'Student & Staff Stats', slug: 'stats' },
     { label: 'School Analytics', slug: 'analytics' },
     { label: 'Class Management', slug: 'classes' },
+    { label: 'Timetable Management', slug: 'timetable' },
     { label: 'Attendance Management', slug: 'attendance' },
     { label: 'User Management', slug: 'users' },
     { label: 'Fee Tracking', slug: 'fees' },
@@ -20,6 +21,7 @@ const roleSections: Record<UserRole, Array<{ label: string; slug: string }>> = {
   ],
   teacher: [
     { label: 'Class Management', slug: 'classes' },
+    { label: 'Timetable', slug: 'timetable' },
     { label: 'Attendance Marking', slug: 'attendance' },
     { label: 'Assignments & Notes', slug: 'assignments' },
     { label: 'Grade Submission', slug: 'grades' },

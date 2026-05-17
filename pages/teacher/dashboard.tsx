@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import Layout from '../../components/Layout'
 import StatCard from '../../components/StatCard'
-import { Calendar, ClipboardCheck, Upload, Award, BarChart3, MessageSquare, Bell } from 'lucide-react'
+import { Calendar, ClipboardCheck, Upload, Award, BarChart3, MessageSquare, Bell, Clock3 } from 'lucide-react'
 import { useDashboardSummary } from '../../src/useDashboardSummary'
 
 const classes = [
@@ -79,6 +79,20 @@ export default function TeacherDashboard(){
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock3 className="w-5 h-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Teacher Timetable</h3>
+        </div>
+        <div className="rounded-lg border border-gray-100 bg-green-50 p-4">
+          <p className="font-semibold text-gray-900">Keep the weekly timetable online</p>
+          <p className="text-sm text-gray-600 mt-1">Add your teaching slots, mark each session as completed or rescheduled, and download the weekly timetable when needed.</p>
+          <Link href="/teacher/timetable" className="mt-3 inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+            Open Timetable
+          </Link>
         </div>
       </div>
 

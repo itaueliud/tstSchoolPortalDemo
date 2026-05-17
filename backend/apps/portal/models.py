@@ -39,6 +39,54 @@ class TeacherProfile(me.Document):
         return f"Teacher {self.user_id}"
 
 
+class TeacherTimetableEntry(me.Document):
+    PENDING = 'pending'
+    COMPLETED = 'completed'
+    MISSED = 'missed'
+    RESCHEDULED = 'rescheduled'
+
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (COMPLETED, 'Completed'),
+        (MISSED, 'Missed'),
+        (RESCHEDULED, 'Rescheduled'),
+    ]
+
+    DAY_CHOICES = [
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+        ('sunday', 'Sunday'),
+    ]
+
+    teacher_id = me.ObjectIdField(required=True)
+    school_class = me.ReferenceField(SchoolClass, required=True)
+    subject = me.StringField(required=True, max_length=120)
+    day_of_week = me.StringField(required=True, choices=[choice[0] for choice in DAY_CHOICES], max_length=20)
+    start_time = me.StringField(required=True, max_length=10)
+    end_time = me.StringField(required=True, max_length=10)
+    room = me.StringField(default='', max_length=40)
+    week_start = me.DateField(required=True)
+    status = me.StringField(default=PENDING, choices=[choice[0] for choice in STATUS_CHOICES], max_length=20)
+    notes = me.StringField(default='', max_length=1000)
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    meta = {
+        'collection': 'teacher_timetable_entries',
+        'indexes': [
+            ('teacher_id', 'week_start'),
+            ('teacher_id', 'week_start', 'day_of_week', 'start_time'),
+            ('school_class', 'week_start'),
+        ],
+    }
+
+    def __str__(self) -> str:
+        return f"{self.subject} {self.day_of_week} {self.start_time}"
+
+
 class ParentProfile(me.Document):
     user_id = me.ObjectIdField(required=True)
     children_ids = me.ListField(me.ReferenceField(StudentProfile))

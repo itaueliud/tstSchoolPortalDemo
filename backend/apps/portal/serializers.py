@@ -16,6 +16,7 @@ from .models import (
     StudentProfile,
     StudentResult,
     TeacherProfile,
+    TeacherTimetableEntry,
 )
 
 
@@ -35,6 +36,25 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherProfile
         fields = ['id', 'subject']
+
+
+class TeacherTimetableEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherTimetableEntry
+        fields = [
+            'id',
+            'teacher_id',
+            'school_class',
+            'subject',
+            'day_of_week',
+            'start_time',
+            'end_time',
+            'room',
+            'week_start',
+            'status',
+            'notes',
+            'updated_at',
+        ]
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
@@ -246,3 +266,20 @@ class AttendanceBulkSerializer(serializers.Serializer):
     school_class_id = serializers.CharField()
     date = serializers.DateField()
     records = AttendanceRecordWriteSerializer(many=True)
+
+
+class TeacherTimetableEntryWriteSerializer(serializers.Serializer):
+    school_class_id = serializers.CharField()
+    subject = serializers.CharField(max_length=120)
+    day_of_week = serializers.ChoiceField(choices=[choice[0] for choice in TeacherTimetableEntry.DAY_CHOICES])
+    start_time = serializers.CharField(max_length=10)
+    end_time = serializers.CharField(max_length=10)
+    room = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    status = serializers.ChoiceField(choices=[choice[0] for choice in TeacherTimetableEntry.STATUS_CHOICES], required=False, default=TeacherTimetableEntry.PENDING)
+    notes = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+    week_start = serializers.DateField(required=False)
+    entry_id = serializers.CharField(required=False, allow_blank=True)
+
+
+class TeacherTimetableBulkSerializer(serializers.Serializer):
+    entries = TeacherTimetableEntryWriteSerializer(many=True)

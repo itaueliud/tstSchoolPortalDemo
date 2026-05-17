@@ -1,5 +1,6 @@
-from io import BytesIO
-from datetime import date, datetime, time
+from io import BytesIO, StringIO
+from datetime import date, datetime, time, timedelta
+import csv
 import base64
 import json
 import secrets
@@ -12,6 +13,7 @@ from mongoengine import Q
 from django.conf import settings
 from django.http import HttpResponse
 from rest_framework import permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from reportlab.lib import colors
@@ -37,6 +39,7 @@ from .models import (
     StudentProfile,
     StudentResult,
     TeacherProfile,
+    TeacherTimetableEntry,
     AssignmentSubmission,
     update_class_rankings,
     update_student_result,
@@ -61,6 +64,9 @@ from .serializers import (
     FeePaymentSerializer,
     MpesaPaymentWriteSerializer,
     MpesaCallbackSerializer,
+    TeacherTimetableBulkSerializer,
+    TeacherTimetableEntrySerializer,
+    TeacherTimetableEntryWriteSerializer,
 )
 
 
@@ -1672,6 +1678,23 @@ def _month_window(year: int, month: int):
     return start, end
 
 
+def _week_start_from_value(value: str | None):
+    if not value:
+        today = date.today()
+    else:
+        try:
+            today = date.fromisoformat(value)
+        except ValueError:
+            today = date.today()
+
+    return today - timedelta(days=today.weekday())
+
+
+def _weekday_sort_key(day_name: str):
+    day_order = {choice[0]: index for index, choice in enumerate(TeacherTimetableEntry.DAY_CHOICES)}
+    return day_order.get(day_name, len(day_order))
+
+
 def _class_breakdown_for_year(year: int, selected_class=None):
     class_rows = []
     for school_class in SchoolClass.objects.order_by('name'):
@@ -2647,6 +2670,236 @@ class MarkEntryContextView(APIView):
                 for item in students
             ],
         })
+
+
+class TeacherTimetableView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocked = self._require_teacher_or_admin(request)
+        if blocked:
+            return blocked
+
+        week_start = _week_start_from_value(request.query_params.get('week_start'))
+        teacher_id = self._resolve_teacher_id(request)
+        entries = list(
+            TeacherTimetableEntry.objects(teacher_id=teacher_id, week_start=week_start)
+            .order_by('day_of_week', 'start_time')
+        )
+        entries = sorted(entries, key=lambda entry: (_weekday_sort_key(entry.day_of_week), entry.start_time))
+        classes = _teacher_classes(request.user) if getattr(request.user, 'role', None) == 'teacher' else list(SchoolClass.objects.order_by('name'))
+        teachers = self._teacher_options() if getattr(request.user, 'role', None) == 'admin' else []
+
+        return Response({
+            'week_start': week_start.isoformat(),
+            'teacher_id': str(teacher_id) if teacher_id else '',
+            'teachers': teachers,
+            'classes': [
+                {
+                    'id': str(item.id),
+                    'name': item.name,
+                    'grade_level': item.grade_level or '',
+                    'room': item.room or '',
+                }
+                for item in classes
+            ],
+            'entries': [self._serialize_entry(entry) for entry in entries],
+            'summary': self._summary(entries),
+        })
+
+    def post(self, request):
+        blocked = self._require_teacher_or_admin(request)
+        if blocked:
+            return blocked
+
+        week_start = _week_start_from_value(request.data.get('week_start') if isinstance(request.data, dict) else None)
+        payload = request.data.get('entries') if isinstance(request.data, dict) and isinstance(request.data.get('entries'), list) else None
+
+        if payload is not None:
+            serializer = TeacherTimetableBulkSerializer(data={'entries': payload})
+            serializer.is_valid(raise_exception=True)
+            entries = [self._upsert_entry(request, item, week_start) for item in serializer.validated_data['entries']]
+        else:
+            serializer = TeacherTimetableEntryWriteSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            entries = [self._upsert_entry(request, serializer.validated_data, week_start)]
+
+        return Response({
+            'entries': [self._serialize_entry(entry) for entry in entries],
+            'summary': self._summary(entries),
+            'week_start': week_start.isoformat(),
+        }, status=status.HTTP_201_CREATED)
+
+    def _upsert_entry(self, request, data, week_start):
+        teacher_id = self._resolve_teacher_id(request)
+        school_class = SchoolClass.objects.get(id=data['school_class_id'])
+
+        if getattr(request.user, 'role', None) == 'teacher':
+            teacher_classes = {str(item.id) for item in _teacher_classes(request.user)}
+            if str(school_class.id) not in teacher_classes:
+                raise ValidationError('You can only manage timetable entries for your classes.')
+
+        entry = None
+        entry_id = data.get('entry_id')
+        if entry_id:
+            entry = TeacherTimetableEntry.objects(id=entry_id).first()
+            if entry and str(entry.teacher_id) != str(teacher_id):
+                entry = None
+
+        if entry is None:
+            entry = TeacherTimetableEntry.objects(
+                teacher_id=teacher_id,
+                week_start=week_start,
+                school_class=school_class,
+                day_of_week=data['day_of_week'],
+                start_time=data['start_time'],
+                subject=data['subject'],
+            ).first()
+
+        if entry is None:
+            entry = TeacherTimetableEntry(teacher_id=teacher_id, school_class=school_class, week_start=week_start)
+
+        entry.teacher_id = teacher_id
+        entry.school_class = school_class
+        entry.subject = data['subject']
+        entry.day_of_week = data['day_of_week']
+        entry.start_time = data['start_time']
+        entry.end_time = data['end_time']
+        entry.room = data.get('room', '') or ''
+        entry.week_start = data.get('week_start') or week_start
+        entry.status = data.get('status', TeacherTimetableEntry.PENDING)
+        entry.notes = data.get('notes', '') or ''
+        entry.updated_at = datetime.utcnow()
+        entry.save()
+        return entry
+
+    def delete(self, request, entry_id: str):
+        blocked = self._require_teacher_or_admin(request)
+        if blocked:
+            return blocked
+
+        entry = TeacherTimetableEntry.objects.get(id=entry_id)
+        teacher_id = self._resolve_teacher_id(request)
+
+        if getattr(request.user, 'role', None) == 'teacher' and str(entry.teacher_id) != str(teacher_id):
+            return Response({'detail': 'You can only delete your own timetable entries.'}, status=status.HTTP_403_FORBIDDEN)
+
+        entry.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _serialize_entry(self, entry):
+        return {
+            'id': str(entry.id),
+            'teacher_id': str(entry.teacher_id),
+            'school_class_id': str(entry.school_class.id),
+            'school_class': entry.school_class.name,
+            'grade_level': entry.school_class.grade_level or '',
+            'subject': entry.subject,
+            'day_of_week': entry.day_of_week,
+            'start_time': entry.start_time,
+            'end_time': entry.end_time,
+            'room': entry.room or '',
+            'week_start': entry.week_start.isoformat() if entry.week_start else '',
+            'status': entry.status,
+            'notes': entry.notes or '',
+            'updated_at': entry.updated_at.isoformat() if entry.updated_at else '',
+        }
+
+    def _summary(self, entries):
+        total = len(entries)
+        completed = sum(1 for entry in entries if entry.status == TeacherTimetableEntry.COMPLETED)
+        pending = sum(1 for entry in entries if entry.status == TeacherTimetableEntry.PENDING)
+        missed = sum(1 for entry in entries if entry.status == TeacherTimetableEntry.MISSED)
+        rescheduled = sum(1 for entry in entries if entry.status == TeacherTimetableEntry.RESCHEDULED)
+        return {
+            'total': total,
+            'completed': completed,
+            'pending': pending,
+            'missed': missed,
+            'rescheduled': rescheduled,
+        }
+
+    def _require_teacher_or_admin(self, request):
+        if getattr(request.user, 'role', None) not in {'teacher', 'admin'}:
+            return Response({'detail': 'Only teachers or admins can manage timetables.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def _resolve_teacher_id(self, request):
+        if getattr(request.user, 'role', None) == 'admin':
+            teacher_id = request.query_params.get('teacher_id')
+            if teacher_id:
+                return teacher_id
+
+            first_profile = TeacherProfile.objects.first()
+            if first_profile:
+                return first_profile.user_id
+
+            return getattr(request.user, 'id', None)
+        return getattr(request.user, 'id', None)
+
+    def _teacher_options(self):
+        options = []
+        for profile in TeacherProfile.objects.order_by('subject'):
+            try:
+                user = SchoolUser.objects.get(id=profile.user_id)
+            except SchoolUser.DoesNotExist:
+                continue
+
+            display_name = user.full_display_name or user.username
+            options.append({
+                'id': str(user.id),
+                'name': display_name,
+                'subject': profile.subject or '',
+            })
+
+        return options
+
+
+class TeacherTimetableExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        blocked = self._require_teacher_or_admin(request)
+        if blocked:
+            return blocked
+
+        week_start = _week_start_from_value(request.query_params.get('week_start'))
+        teacher_id = self._resolve_teacher_id(request)
+        entries = list(
+            TeacherTimetableEntry.objects(teacher_id=teacher_id, week_start=week_start)
+            .order_by('day_of_week', 'start_time')
+        )
+        entries = sorted(entries, key=lambda entry: (_weekday_sort_key(entry.day_of_week), entry.start_time))
+
+        buffer = StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(['Week Start', 'Day', 'Start', 'End', 'Class', 'Subject', 'Room', 'Status', 'Notes'])
+        for entry in entries:
+            writer.writerow([
+                week_start.isoformat(),
+                entry.day_of_week.title(),
+                entry.start_time,
+                entry.end_time,
+                entry.school_class.name,
+                entry.subject,
+                entry.room or '',
+                entry.status.title(),
+                entry.notes or '',
+            ])
+
+        response = HttpResponse(buffer.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="teacher-timetable-{week_start.isoformat()}.csv"'
+        return response
+
+    def _require_teacher_or_admin(self, request):
+        if getattr(request.user, 'role', None) not in {'teacher', 'admin'}:
+            return Response({'detail': 'Only teachers or admins can export timetables.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def _resolve_teacher_id(self, request):
+        if getattr(request.user, 'role', None) == 'admin':
+            return request.query_params.get('teacher_id') or getattr(request.user, 'id', None)
+        return getattr(request.user, 'id', None)
 
 
 class ClassRankingView(APIView):

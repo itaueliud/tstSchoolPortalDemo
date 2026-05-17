@@ -355,3 +355,143 @@ class PortalAdminSmokeTests(SimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['user']['username'], 'new.parent')
         self.assertEqual(response.data['user']['role'], 'parent')
+
+
+class PortalTeacherTimetableTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.teacher_user = SimpleNamespace(id='teacher-1', role='teacher', username='teacher.one', full_display_name='Teacher One')
+        self.admin_user = SimpleNamespace(id='admin-1', role='admin', username='admin.one', full_display_name='Admin One')
+        self.school_class = SimpleNamespace(id='class-1', name='Grade 1', grade_level='G1', room='A1')
+
+    def test_teacher_timetable_get_returns_entries_and_classes(self):
+        timetable_entry = SimpleNamespace(
+            id='timetable-1',
+            teacher_id='teacher-1',
+            school_class=self.school_class,
+            subject='Mathematics',
+            day_of_week='monday',
+            start_time='09:00',
+            end_time='10:00',
+            room='Room 12',
+            week_start=datetime(2026, 5, 11).date(),
+            status='pending',
+            notes='Take attendance',
+            updated_at=datetime(2026, 5, 10, 8, 0, 0),
+        )
+
+        entries_collection = MagicMock(return_value=FakeQuery(items=[timetable_entry]))
+        classes_collection = MagicMock()
+        classes_collection.order_by.return_value = FakeQuery(items=[self.school_class])
+
+        request = self.factory.get('/api/dashboard/timetable/?week_start=2026-05-11')
+        force_authenticate(request, user=self.teacher_user)
+
+        with patch.multiple(
+            views,
+            TeacherTimetableEntry=SimpleNamespace(objects=entries_collection),
+            SchoolClass=SimpleNamespace(objects=classes_collection),
+            _teacher_classes=MagicMock(return_value=[self.school_class]),
+        ):
+            response = views.TeacherTimetableView.as_view()(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['summary']['total'], 1)
+        self.assertEqual(response.data['classes'][0]['name'], 'Grade 1')
+        self.assertEqual(response.data['entries'][0]['subject'], 'Mathematics')
+
+    def test_admin_timetable_get_includes_teacher_options(self):
+        teacher_profile = SimpleNamespace(user_id='teacher-user-1', subject='Mathematics')
+        user_collection = SimpleNamespace(get=MagicMock(return_value=SimpleNamespace(id='teacher-user-1', full_display_name='Teacher One', username='teacher.one')))
+
+        request = self.factory.get('/api/dashboard/timetable/?week_start=2026-05-11')
+        force_authenticate(request, user=self.admin_user)
+
+        with patch.multiple(
+            views,
+            TeacherTimetableEntry=SimpleNamespace(objects=MagicMock(return_value=FakeQuery(items=[]))),
+            TeacherProfile=SimpleNamespace(objects=SimpleNamespace(first=MagicMock(return_value=teacher_profile), order_by=MagicMock(return_value=[teacher_profile]))),
+            SchoolClass=SimpleNamespace(objects=SimpleNamespace(order_by=MagicMock(return_value=FakeQuery(items=[self.school_class])))),
+            SchoolUser=SimpleNamespace(objects=user_collection, DoesNotExist=Exception),
+        ):
+            response = views.TeacherTimetableView.as_view()(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['teacher_id'], 'teacher-user-1')
+        self.assertEqual(response.data['teachers'][0]['name'], 'Teacher One')
+
+    def test_teacher_timetable_post_marks_entry_and_exports_csv(self):
+        created_entries = []
+
+        class FakeTeacherTimetableEntry:
+            objects = MagicMock()
+            default_school_class = None
+
+            def __init__(self, **kwargs):
+                self.id = kwargs.get('id', f'timetable-{len(created_entries) + 1}')
+                self.teacher_id = kwargs.get('teacher_id', 'teacher-1')
+                self.school_class = kwargs.get('school_class', self.default_school_class)
+                self.subject = kwargs.get('subject', '')
+                self.day_of_week = kwargs.get('day_of_week', '')
+                self.start_time = kwargs.get('start_time', '')
+                self.end_time = kwargs.get('end_time', '')
+                self.room = kwargs.get('room', '')
+                self.week_start = kwargs.get('week_start', datetime(2026, 5, 11).date())
+                self.status = kwargs.get('status', 'pending')
+                self.notes = kwargs.get('notes', '')
+                self.updated_at = kwargs.get('updated_at', datetime(2026, 5, 11, 8, 0, 0))
+
+            def save(self):
+                if self not in created_entries:
+                    created_entries.append(self)
+                return self
+
+            def delete(self):
+                if self in created_entries:
+                    created_entries.remove(self)
+
+        def entry_lookup(**kwargs):
+            if kwargs.get('id'):
+                matches = [item for item in created_entries if item.id == kwargs['id']]
+                return FakeQuery(items=matches)
+            matches = [item for item in created_entries if str(item.teacher_id) == str(kwargs.get('teacher_id')) and item.week_start == kwargs.get('week_start')]
+            return FakeQuery(items=matches)
+
+        FakeTeacherTimetableEntry.objects.side_effect = entry_lookup
+        FakeTeacherTimetableEntry.default_school_class = self.school_class
+
+        post_request = self.factory.post(
+            '/api/dashboard/timetable/',
+            {
+                'week_start': '2026-05-11',
+                'school_class_id': 'class-1',
+                'subject': 'Mathematics',
+                'day_of_week': 'monday',
+                'start_time': '09:00',
+                'end_time': '10:00',
+                'room': 'Room 12',
+                'status': 'completed',
+                'notes': 'Lesson covered',
+            },
+            format='json',
+        )
+        force_authenticate(post_request, user=self.teacher_user)
+
+        export_request = self.factory.get('/api/dashboard/timetable/export/?week_start=2026-05-11')
+        force_authenticate(export_request, user=self.teacher_user)
+
+        with patch.multiple(
+            views,
+            TeacherTimetableEntry=FakeTeacherTimetableEntry,
+            SchoolClass=SimpleNamespace(objects=SimpleNamespace(get=MagicMock(return_value=self.school_class), order_by=MagicMock(return_value=FakeQuery(items=[self.school_class])))),
+            _teacher_classes=MagicMock(return_value=[self.school_class]),
+        ):
+            post_response = views.TeacherTimetableView.as_view()(post_request)
+            export_response = views.TeacherTimetableExportView.as_view()(export_request)
+
+        self.assertEqual(post_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(post_response.data['entries'][0]['status'], 'completed')
+        self.assertEqual(export_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(export_response['Content-Type'], 'text/csv')
+        self.assertIn('teacher-timetable-2026-05-11.csv', export_response['Content-Disposition'])
+        self.assertIn('Mathematics', export_response.content.decode())
