@@ -38,7 +38,7 @@ function getWeekStartString(date: Date): string {
 }
 
 export default function StudentTimetableViewPage() {
-  const { summary } = useDashboardSummary()
+  const { data, loading: summaryLoading } = useDashboardSummary('student')
   const [weekStart, setWeekStart] = useState<string>('')
   const [allEntries, setAllEntries] = useState<TimetableEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -53,11 +53,12 @@ export default function StudentTimetableViewPage() {
 
   // Get student's class from summary
   useEffect(() => {
+    const summary = data?.summary
     if (summary && typeof summary === 'object' && 'current_class' in summary) {
       const studentSummary = summary as StudentSummary
       setStudentClass(studentSummary.current_class || '')
     }
-  }, [summary])
+  }, [data])
 
   // Fetch all timetable entries for the week
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function StudentTimetableViewPage() {
         setLoading(true)
         // Fetch timetable for the school (no specific teacher filter)
         // This will get all timetable entries for all teachers
-        const response = await requestJson(
+        const response = await requestJson<{ entries: TimetableEntry[] }>(
           `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/timetable/?week_start=${weekStart}`,
           { method: 'GET' }
         )
@@ -202,7 +203,7 @@ export default function StudentTimetableViewPage() {
               <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
                 No class assignment found. Please contact administration.
               </div>
-            ) : loading ? (
+            ) : loading || summaryLoading ? (
               <div className="flex items-center justify-center py-12 text-gray-500">
                 <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
                 Loading timetable...

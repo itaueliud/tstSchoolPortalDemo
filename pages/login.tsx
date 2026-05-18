@@ -143,7 +143,7 @@ export default function Login() {
 
           <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs text-blue-800">
-              <strong>Demo Tip:</strong> Try Student (ADM001), Parent (PARENT001), Teacher (TEACHER001), or Admin (ADMIN001) with password <code className="bg-blue-100 px-1 rounded">password123</code>
+              <strong>Demo Tip:</strong>  Student (stude) pass(12345678), Parent (parent) pass(12345678), Teacher (teacher) pass(12345678), Admin (admin) password <code className="bg-blue-100 px-1 rounded">Admin@12345</code>
             </p>
           </div>
 

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Layout from '../../components/Layout'
 import TimetableWeekGrid from '../../components/TimetableWeekGrid'
 import { CalendarDays, Download, RefreshCw } from 'lucide-react'
-import { useDashboardSummary } from '../../src/useDashboardSummary'
 import { requestBlob, requestJson } from '../../src/apiClient'
 
 type TimetableEntry = {
@@ -37,7 +36,6 @@ function getWeekStartString(date: Date): string {
 }
 
 export default function TeacherTimetableViewPage() {
-  const { summary } = useDashboardSummary()
   const [weekStart, setWeekStart] = useState<string>('')
   const [entries, setEntries] = useState<TimetableEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -56,7 +54,7 @@ export default function TeacherTimetableViewPage() {
     const fetchTimetable = async () => {
       try {
         setLoading(true)
-        const response = await requestJson(
+        const response = await requestJson<{ entries: TimetableEntry[] }>(
           `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/timetable/?week_start=${weekStart}`,
           { method: 'GET' }
         )
